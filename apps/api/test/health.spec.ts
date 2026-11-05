@@ -20,6 +20,7 @@ describe('HealthController (Unit/Integration)', () => {
     }).compile();
 
     app = moduleRef.createNestApplication();
+    app.setGlobalPrefix('api');
     await app.init();
   });
 
@@ -27,8 +28,8 @@ describe('HealthController (Unit/Integration)', () => {
     await app.close();
   });
 
-  it('GET /health returns status ok with clock timestamp and date', async () => {
-    const res = await request(app.getHttpServer()).get('/health').expect(200);
+  it('GET /api/health returns status ok with clock timestamp and date', async () => {
+    const res = await request(app.getHttpServer()).get('/api/health').expect(200);
 
     expect(res.body.status).toBe('ok');
     expect(res.body.timestamp).toBe('2026-11-05T08:00:00.000Z');

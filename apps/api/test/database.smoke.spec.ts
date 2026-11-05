@@ -6,16 +6,20 @@ describe('Database and Migration Smoke Verification', () => {
   let dataSource: DataSource;
 
   beforeAll(async () => {
-    process.env.NODE_ENV = 'test';
-    process.env.SEED_DEMO_PASSWORD = 'test_demo_password';
     dataSource = await getTestDataSource();
-    await dataSource.runMigrations();
+    if (dataSource.isInitialized) {
+      await dataSource.runMigrations();
+    }
   });
 
   afterAll(async () => {
     if (dataSource && dataSource.isInitialized) {
       await dataSource.destroy();
     }
+  });
+
+  it('should explicitly connect to the test database', () => {
+    expect(dataSource.options.database).toBe(process.env.DATABASE_NAME_TEST || 'queue_system_test');
   });
 
   it('should have all 6 core tables present in the database', async () => {

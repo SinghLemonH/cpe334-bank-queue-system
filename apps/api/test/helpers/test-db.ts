@@ -1,12 +1,17 @@
 import { DataSource } from 'typeorm';
-import { AppDataSource } from '../../src/infrastructure/data-source';
+import { getDataSourceOptions } from '../../src/infrastructure/data-source';
 import { PasswordHasher } from '../../src/infrastructure/password-hasher';
 
+let testDataSourceInstance: DataSource | null = null;
+
 export async function getTestDataSource(): Promise<DataSource> {
-  if (AppDataSource.isInitialized) {
-    return AppDataSource;
+  if (testDataSourceInstance && testDataSourceInstance.isInitialized) {
+    return testDataSourceInstance;
   }
-  return await AppDataSource.initialize();
+  const options = getDataSourceOptions(true);
+  testDataSourceInstance = new DataSource(options);
+  await testDataSourceInstance.initialize();
+  return testDataSourceInstance;
 }
 
 export async function clearDatabase(dataSource: DataSource): Promise<void> {

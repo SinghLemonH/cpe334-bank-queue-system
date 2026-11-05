@@ -10,6 +10,7 @@ const config: Config = {
   collectCoverageFrom: ['src/**/*.(t|j)s', '!src/main.ts', '!src/infrastructure/migrations/**'],
   coverageDirectory: './coverage',
   testEnvironment: 'node',
+  setupFiles: ['<rootDir>/test/helpers/setup-env.ts'],
 };
 
 export default config;
