@@ -1,4 +1,7 @@
 services:
+  # Development database (npm run dev:*, db:migrate, db:seed)
+  # Host ports follow DATABASE_PORT / DATABASE_PORT_TEST (shell or root .env), so a
+  # local Postgres already on 5432 can be avoided, e.g. DATABASE_PORT=5434.
   postgres:
     image: postgres:17-alpine
     container_name: queue_postgres
@@ -8,11 +11,31 @@ services:
       POSTGRES_PASSWORD: queue
       POSTGRES_DB: queue_dev
     ports:
-      - "5432:5432"
+      - "${DATABASE_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U queue -d queue_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Test database for automated tests only (npm test). Same major version as dev.
+  # Data lives in tmpfs: it is disposable and is recreated on every container start.
+  postgres_test:
+    image: postgres:17-alpine
+    container_name: queue_postgres_test
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: queue
+      POSTGRES_PASSWORD: queue
+      POSTGRES_DB: queue_test
+    ports:
+      - "${DATABASE_PORT_TEST:-5433}:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U queue -d queue_test"]
       interval: 5s
       timeout: 5s
       retries: 5
