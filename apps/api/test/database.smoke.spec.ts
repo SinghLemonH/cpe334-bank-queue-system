@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 import { getTestDataSource, clearDatabase } from './helpers/test-db';
 import { runSeed } from '../src/infrastructure/seed/seed';
+import { AppDataSource } from '../src/infrastructure/data-source';
 
 describe('Database and Migration Smoke Verification', () => {
   let dataSource: DataSource;
@@ -15,6 +16,9 @@ describe('Database and Migration Smoke Verification', () => {
   afterAll(async () => {
     if (dataSource && dataSource.isInitialized) {
       await dataSource.destroy();
+    }
+    if (AppDataSource.isInitialized) {
+      await AppDataSource.destroy();
     }
   });
 
