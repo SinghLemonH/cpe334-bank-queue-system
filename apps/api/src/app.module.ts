@@ -5,6 +5,7 @@ import { ClockModule } from './common/clock.module';
 import { getDataSourceOptions } from './infrastructure/data-source';
 import { AuthModule } from './modules/auth.module';
 import { QueueModule } from './modules/queue.module';
+import { ServiceDeskModule } from './modules/service-desk.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { QueueModule } from './modules/queue.module';
     ClockModule,
     AuthModule,
     QueueModule,
+    ServiceDeskModule,
   ],
   controllers: [HealthController],
 })

@@ -19,6 +19,10 @@ export const PROTECTED_ENDPOINTS: ProtectedEndpoint[] = [
   { method: 'post', path: '/api/queues/D/entries', feature: 'F-02' },
   { method: 'get', path: '/api/me/entries', feature: 'F-02' },
   { method: 'get', path: '/api/entries/:id', feature: 'F-02' },
-  // F-03 (#10): GET /api/operator/queues, GET /api/operator/current-entry,
-  //             POST /api/queues/D/call-next, POST /api/entries/:id/start, POST /api/entries/:id/complete
+  // F-03 Operator service desk
+  { method: 'get', path: '/api/operator/queues', feature: 'F-03' },
+  { method: 'get', path: '/api/operator/current-entry', feature: 'F-03' },
+  { method: 'post', path: '/api/queues/D/call-next', feature: 'F-03' },
+  { method: 'post', path: '/api/entries/:id/start', feature: 'F-03' },
+  { method: 'post', path: '/api/entries/:id/complete', feature: 'F-03' },
 ];

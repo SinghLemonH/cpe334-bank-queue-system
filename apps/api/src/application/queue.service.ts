@@ -27,7 +27,7 @@ export interface EntryView {
   endedAt: string | null;
 }
 
-interface EntryRow {
+export interface EntryRow {
   id: string;
   queue_code: string;
   display_number: string;
@@ -40,9 +40,9 @@ interface EntryRow {
   people_ahead: number | string | null;
 }
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const ENTRY_SELECT = `
+export const ENTRY_SELECT = `
   SELECT e.id,
          q.code AS queue_code,
          e.display_number,
@@ -72,7 +72,7 @@ function iso(value: Date | string | null): string | null {
   return new Date(value).toISOString();
 }
 
-function toEntry(row: EntryRow): EntryView {
+export function toEntry(row: EntryRow): EntryView {
   const ahead = row.people_ahead == null ? null : Number(row.people_ahead);
   return {
     id: row.id,

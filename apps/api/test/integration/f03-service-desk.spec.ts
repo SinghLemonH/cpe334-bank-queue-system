@@ -128,6 +128,11 @@ describe('F-03 Operator service desk (integration)', () => {
 
   const start = (sid: string, id: string) => post(sid, `/api/entries/${id}/start`);
   const complete = (sid: string, id: string) => post(sid, `/api/entries/${id}/complete`);
+  const callNext = (sid: string, code: string) => post(sid, `/api/queues/${code}/call-next`);
+
+  function get(sid: string, path: string) {
+    return request(server()).get(path).set('Cookie', `sid=${sid}`);
+  }
 
   function expectError(res: request.Response, status: number, code: string) {
     expect(res.status).toBe(status);
@@ -183,5 +188,202 @@ describe('F-03 Operator service desk (integration)', () => {
       expectError(await start(sid, id), 404, 'NOT_FOUND');
       expectError(await complete(sid, id), 404, 'NOT_FOUND');
     }
+  });
+
+  // ---------------------------------------------------------------------------
+  // TEST-19..TEST-25, TEST-27..TEST-29
+  // ---------------------------------------------------------------------------
+
+  it('TEST-19 / AC-19: operator sees only assigned queues with waiting counts and the held entry', async () => {
+    await insertEntry('D', 1, 'c1');
+    await insertEntry('D', 2, 'c2');
+    await insertEntry('L', 1, 'c3');
+    const sid = await login('teller1');
+
+    const queues = await get(sid, '/api/operator/queues').expect(200);
+    expect(queues.body).toEqual([{ code: 'D', name: 'Deposit & Withdrawal', isOpen: true, waitingCount: 2 }]);
+
+    const before = await get(sid, '/api/operator/current-entry').expect(200);
+    expect(before.body).toEqual({ entry: null });
+
+    const called = await callNext(sid, 'D').expect(200);
+    const after = await get(sid, '/api/operator/current-entry').expect(200);
+    expect(after.body.entry).toMatchObject({ id: called.body.id, displayNumber: 'D001', status: 'CALLED' });
+
+    const counts = await get(sid, '/api/operator/queues').expect(200);
+    expect(counts.body[0].waitingCount).toBe(1);
+  });
+
+  it('TEST-20 / AC-20: call-next takes the lowest-seq WAITING entry and records the operator', async () => {
+    const first = await insertEntry('D', 1, 'c1');
+    const second = await insertEntry('D', 2, 'c2');
+    const sid = await login('teller1');
+    clock.advanceMinutes(5);
+
+    const res = await callNext(sid, 'D').expect(200);
+    expect(res.body).toMatchObject({
+      id: first,
+      queueCode: 'D',
+      displayNumber: 'D001',
+      status: 'CALLED',
+      peopleAhead: null,
+      calledAt: clock.now().toISOString(),
+    });
+    expect(res.body).not.toHaveProperty('operatorId');
+    expect(res.body).not.toHaveProperty('customerId');
+    expect((await row(first)).operator_id).toBe(users.teller1);
+    expect((await row(second)).status).toBe('WAITING');
+  });
+
+  it('TEST-21 / AC-21: call-next with nothing WAITING today returns 409 NO_WAITING_ENTRY', async () => {
+    const yesterday = await insertEntry('D', 1, 'c1', { queueDate: YESTERDAY });
+    const before = await row(yesterday);
+    const sid = await login('teller1');
+
+    expectError(await callNext(sid, 'D'), 409, 'NO_WAITING_ENTRY');
+    expect(await row(yesterday)).toEqual(before);
+  });
+
+  it('TEST-22 / AC-22: call-next while holding a CALLED or SERVING entry returns 409 OPERATOR_BUSY', async () => {
+    await insertEntry('D', 1, 'c1');
+    const waiting = await insertEntry('D', 2, 'c2');
+    const sid = await login('teller1');
+
+    const held = await callNext(sid, 'D').expect(200);
+    expectError(await callNext(sid, 'D'), 409, 'OPERATOR_BUSY');
+
+    await start(sid, held.body.id).expect(200);
+    expectError(await callNext(sid, 'D'), 409, 'OPERATOR_BUSY');
+
+    expect(await row(waiting)).toMatchObject({ status: 'WAITING', operator_id: null, called_at: null });
+  });
+
+  it('TEST-23 / AC-23: call-next on a queue that is not assigned returns 403 FORBIDDEN', async () => {
+    const loan = await insertEntry('L', 1, 'c1');
+    const sid = await login('teller1');
+
+    expectError(await callNext(sid, 'L'), 403, 'FORBIDDEN');
+    expect(await row(loan)).toMatchObject({ status: 'WAITING', operator_id: null });
+  });
+
+  it('TEST-23 / AC-23: unknown queue code is 404; start on an unassigned queue is 403 FORBIDDEN', async () => {
+    await insertEntry('D', 1, 'c1');
+    const teller = await login('teller1');
+    const loanOfficer = await login('loanofficer1');
+
+    expectError(await callNext(teller, 'Z'), 404, 'NOT_FOUND');
+
+    const called = await callNext(teller, 'D').expect(200);
+    expectError(await start(loanOfficer, called.body.id), 403, 'FORBIDDEN');
+    expect((await row(called.body.id)).status).toBe('CALLED');
+  });
+
+  it('TEST-24 / AC-24: concurrent call-next never hands the same entry to two operators (5 rounds)', async () => {
+    const t1 = await login('teller1');
+    const t2 = await login('teller2');
+
+    for (let round = 0; round < 5; round += 1) {
+      // (a) two waiting -> two different entries
+      await db.query(`DELETE FROM queue_entries`);
+      await insertEntry('D', 1, 'c1');
+      await insertEntry('D', 2, 'c2');
+      const [a1, a2] = await Promise.all([callNext(t1, 'D'), callNext(t2, 'D')]);
+      expect([a1.status, a2.status]).toEqual([200, 200]);
+      expect(a1.body.id).not.toBe(a2.body.id);
+
+      // (b) one waiting -> one 200, one 409 NO_WAITING_ENTRY
+      await db.query(`DELETE FROM queue_entries`);
+      const only = await insertEntry('D', 1, 'c1');
+      const results = await Promise.all([callNext(t1, 'D'), callNext(t2, 'D')]);
+      const ok = results.filter((r) => r.status === 200);
+      const rejected = results.filter((r) => r.status === 409);
+      expect(ok).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+      expect(ok[0].body.id).toBe(only);
+      expect(rejected[0].body.error.code).toBe('NO_WAITING_ENTRY');
+    }
+  });
+
+  it('TEST-25 / AC-25: start and complete record timestamps and the customer sees each status', async () => {
+    const id = await insertEntry('D', 1, 'c1');
+    const teller = await login('teller1');
+    const customer = await login('c1');
+    await callNext(teller, 'D').expect(200);
+
+    clock.advanceMinutes(3);
+    const t1 = clock.now().toISOString();
+    const started = await start(teller, id).expect(200);
+    expect(started.body).toMatchObject({ id, status: 'SERVING', startedAt: t1, endedAt: null });
+    expect((await get(customer, `/api/entries/${id}`).expect(200)).body.status).toBe('SERVING');
+
+    clock.advanceMinutes(7);
+    const t2 = clock.now().toISOString();
+    const completed = await complete(teller, id).expect(200);
+    expect(completed.body).toMatchObject({ id, status: 'COMPLETED', startedAt: t1, endedAt: t2 });
+    expect((await get(customer, `/api/entries/${id}`).expect(200)).body).toMatchObject({
+      status: 'COMPLETED',
+      endedAt: t2,
+    });
+    expect((await get(teller, '/api/operator/current-entry').expect(200)).body).toEqual({ entry: null });
+  });
+
+  it('TEST-25 / AC-25: after completing, the operator is free to call the next entry', async () => {
+    const first = await insertEntry('D', 1, 'c1');
+    await insertEntry('D', 2, 'c2');
+    const sid = await login('teller1');
+
+    await callNext(sid, 'D').expect(200);
+    await start(sid, first).expect(200);
+    await complete(sid, first).expect(200);
+
+    const next = await callNext(sid, 'D').expect(200);
+    expect(next.body).toMatchObject({ displayNumber: 'D002', status: 'CALLED' });
+  });
+
+  it('TEST-27 / AC-27: another operator cannot start or complete an entry they did not call', async () => {
+    const id = await insertEntry('D', 1, 'c1');
+    const t1 = await login('teller1');
+    const t2 = await login('teller2');
+    await callNext(t1, 'D').expect(200);
+    const called = await row(id);
+
+    expectError(await start(t2, id), 403, 'NOT_ENTRY_OWNER');
+    expect(await row(id)).toEqual(called);
+
+    await start(t1, id).expect(200);
+    expectError(await complete(t2, id), 403, 'NOT_ENTRY_OWNER');
+    expect((await row(id)).status).toBe('SERVING');
+  });
+
+  it('TEST-28 / AC-28: a customer gets 403 FORBIDDEN on every operator endpoint', async () => {
+    const id = await insertEntry('D', 1, 'c1');
+    const before = await row(id);
+    const sid = await login('c1');
+
+    expectError(await callNext(sid, 'D'), 403, 'FORBIDDEN');
+    expectError(await start(sid, id), 403, 'FORBIDDEN');
+    expectError(await complete(sid, id), 403, 'FORBIDDEN');
+    expectError(await get(sid, '/api/operator/queues'), 403, 'FORBIDDEN');
+    expectError(await get(sid, '/api/operator/current-entry'), 403, 'FORBIDDEN');
+    expect(await row(id)).toEqual(before);
+  });
+
+  it('TEST-29 / AC-29: a COMPLETED entry survives an API restart (NFR-04)', async () => {
+    const id = await insertEntry('D', 1, 'c1');
+    const teller = await login('teller1');
+    await callNext(teller, 'D').expect(200);
+    clock.advanceMinutes(2);
+    await start(teller, id).expect(200);
+    clock.advanceMinutes(4);
+    const done = await complete(teller, id).expect(200);
+
+    // Close the Nest app and build a new one against the same test database.
+    await app.close();
+    ({ app } = await createTestApp(clock));
+
+    const customer = await login('c1');
+    const res = await get(customer, `/api/entries/${id}`).expect(200);
+    expect(res.body).toEqual(done.body);
+    expect(res.body.status).toBe('COMPLETED');
   });
 });

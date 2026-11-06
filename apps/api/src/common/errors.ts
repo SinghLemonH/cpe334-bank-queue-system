@@ -57,10 +57,11 @@ export class NotEntryOwnerError extends DomainError {
   }
 }
 
+/** 403 FORBIDDEN: the operator is not assigned to the queue (contract SA-3, BR-05). */
 export class QueueNotAssignedError extends DomainError {
   readonly statusCode = 403;
-  readonly errorCode = 'QUEUE_NOT_ASSIGNED';
-  constructor(message = 'Operator is not assigned to this queue') {
+  readonly errorCode = 'FORBIDDEN';
+  constructor(message = 'You are not assigned to this queue.') {
     super(message);
   }
 }
