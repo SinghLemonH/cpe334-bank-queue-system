@@ -11,7 +11,7 @@ export class PasswordHasher {
   private static readonly TEST_OPTIONS: argon2.Options = {
     type: argon2.argon2id,
     memoryCost: 4096,
-    timeCost: 1,
+    timeCost: 2,
     parallelism: 1,
   };
 

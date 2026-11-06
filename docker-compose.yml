@@ -1,19 +1,18 @@
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: cpe334_postgres
+    container_name: queue_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: queue_system
+      POSTGRES_USER: queue
+      POSTGRES_PASSWORD: queue
+      POSTGRES_DB: queue_dev
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d queue_system"]
+      test: ["CMD-SHELL", "pg_isready -U queue -d queue_dev"]
       interval: 5s
       timeout: 5s
       retries: 5
