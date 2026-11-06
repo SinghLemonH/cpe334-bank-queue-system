@@ -12,6 +12,29 @@ export interface User {
   role: Role;
 }
 
+export interface QueueSummary {
+  code: string;
+  name: string;
+  isOpen: boolean;
+  waitingCount: number;
+}
+
+export type EntryStatus = 'WAITING' | 'CALLED' | 'SERVING' | 'COMPLETED';
+
+/** Entry shape from the Sprint 1 contract (README 3.4). */
+export interface QueueEntry {
+  id: string;
+  queueCode: string;
+  displayNumber: string;
+  status: EntryStatus;
+  lane: 'REGULAR' | 'PRIORITY';
+  peopleAhead: number | null;
+  joinedAt: string;
+  calledAt: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,

@@ -14,7 +14,11 @@ export const PROTECTED_ENDPOINTS: ProtectedEndpoint[] = [
   // F-01 Auth & RBAC
   { method: 'post', path: '/api/auth/logout', feature: 'F-01' },
   { method: 'get', path: '/api/auth/me', feature: 'F-01' },
-  // F-02 (#9): GET /api/queues, POST /api/queues/D/entries, GET /api/me/entries, GET /api/entries/:id
+  // F-02 Join queue & my ticket
+  { method: 'get', path: '/api/queues', feature: 'F-02' },
+  { method: 'post', path: '/api/queues/D/entries', feature: 'F-02' },
+  { method: 'get', path: '/api/me/entries', feature: 'F-02' },
+  { method: 'get', path: '/api/entries/:id', feature: 'F-02' },
   // F-03 (#10): GET /api/operator/queues, GET /api/operator/current-entry,
   //             POST /api/queues/D/call-next, POST /api/entries/:id/start, POST /api/entries/:id/complete
 ];

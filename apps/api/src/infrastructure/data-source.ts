@@ -22,6 +22,9 @@ export function getDataSourceOptions(isTest?: boolean): DataSourceOptions {
       : process.env.DATABASE_NAME || 'queue_dev',
     synchronize: false,
     ssl: process.env.DATABASE_SSL === 'true',
+    // TEST-14 fires 20 joins at once. Each holds one connection for its transaction,
+    // so the pool must be larger than the default (10) or those requests deadlock.
+    extra: { max: 30 },
     entities: [__dirname + '/entities/*.{ts,js}'],
     migrations: [__dirname + '/migrations/*.{ts,js}'],
     migrationsTableName: 'typeorm_migrations',

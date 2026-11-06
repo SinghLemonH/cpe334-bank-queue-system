@@ -4,6 +4,7 @@ import { HealthController } from './presentation/health.controller';
 import { ClockModule } from './common/clock.module';
 import { getDataSourceOptions } from './infrastructure/data-source';
 import { AuthModule } from './modules/auth.module';
+import { QueueModule } from './modules/queue.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AuthModule } from './modules/auth.module';
     }),
     ClockModule,
     AuthModule,
+    QueueModule,
   ],
   controllers: [HealthController],
 })
