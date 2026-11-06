@@ -38,6 +38,29 @@ const MESSAGES: Record<string, FriendlyMessage> = {
     en: 'This queue no longer exists.',
     th: 'ไม่พบคิวนี้',
   },
+  // F-03 Service desk (docs/sprints/sprint-1/F-03-service-desk.md 5)
+  NO_WAITING_ENTRY: {
+    en: 'No customers are waiting in this queue.',
+    th: 'ไม่มีลูกค้ารอในคิวนี้',
+  },
+  OPERATOR_BUSY: {
+    en: 'Finish your current customer before calling the next one.',
+    th: 'กรุณาให้บริการลูกค้าคนปัจจุบันให้เสร็จก่อนเรียกคิวถัดไป',
+  },
+  INVALID_TRANSITION: {
+    en: 'This ticket has already changed. The page has been refreshed.',
+    th: 'สถานะบัตรคิวเปลี่ยนไปแล้ว ระบบได้รีเฟรชหน้าให้',
+  },
+  NOT_ENTRY_OWNER: {
+    en: 'Only the operator who called this ticket can serve it.',
+    th: 'เฉพาะพนักงานที่เรียกคิวนี้เท่านั้นที่ให้บริการได้',
+  },
+};
+
+/** Service desk copy for FORBIDDEN (F-03 contract 5): the operator is not assigned to the queue. */
+export const DESK_FORBIDDEN: FriendlyMessage = {
+  en: 'You are not assigned to this queue.',
+  th: 'คุณไม่ได้รับมอบหมายให้ดูแลคิวนี้',
 };
 
 /** Join screen copy for a role rejection (the shared FORBIDDEN line stays generic). */
@@ -58,5 +81,11 @@ export function messageFor(code: string | undefined): FriendlyMessage {
 /** Same map as messageFor, with the join-specific FORBIDDEN sentence from the F-02 contract. */
 export function messageForJoin(code: string | undefined): FriendlyMessage {
   if (code === 'FORBIDDEN') return JOIN_FORBIDDEN;
+  return messageFor(code);
+}
+
+/** Same map as messageFor, with the service-desk FORBIDDEN sentence from the F-03 contract. */
+export function messageForDesk(code: string | undefined): FriendlyMessage {
+  if (code === 'FORBIDDEN') return DESK_FORBIDDEN;
   return messageFor(code);
 }
