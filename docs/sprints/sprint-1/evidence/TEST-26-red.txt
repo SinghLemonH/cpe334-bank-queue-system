@@ -1,0 +1,101 @@
+# TEST-26 + UT-01 red run (before the F-03 implementation)
+# commit: test(F-03) failing tests; command: npx jest --runInBand test/integration/f03-service-desk.spec.ts test/unit/entry-status.spec.ts
+
+FAIL test/integration/f03-service-desk.spec.ts
+  ● F-03 Operator service desk (integration) › TEST-26 / AC-26: completing a CALLED entry returns 409 INVALID_TRANSITION and leaves the row unchanged
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 409
+    Received: 404
+
+      131 |
+      132 |   function expectError(res: request.Response, status: number, code: string) {
+    > 133 |     expect(res.status).toBe(status);
+          |                        ^
+      134 |     expect(Object.keys(res.body)).toEqual(['error']);
+      135 |     expect(res.body.error.code).toBe(code);
+      136 |   }
+
+      at expectError (test/integration/f03-service-desk.spec.ts:133:24)
+      at Object.<anonymous> (test/integration/f03-service-desk.spec.ts:147:5)
+
+  ● F-03 Operator service desk (integration) › TEST-26 / AC-26: starting a SERVING entry (start twice) returns 409 INVALID_TRANSITION
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 409
+    Received: 404
+
+      131 |
+      132 |   function expectError(res: request.Response, status: number, code: string) {
+    > 133 |     expect(res.status).toBe(status);
+          |                        ^
+      134 |     expect(Object.keys(res.body)).toEqual(['error']);
+      135 |     expect(res.body.error.code).toBe(code);
+      136 |   }
+
+      at expectError (test/integration/f03-service-desk.spec.ts:133:24)
+      at Object.<anonymous> (test/integration/f03-service-desk.spec.ts:156:5)
+
+  ● F-03 Operator service desk (integration) › TEST-26 / AC-26: starting or completing a COMPLETED entry returns 409 INVALID_TRANSITION
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 409
+    Received: 404
+
+      131 |
+      132 |   function expectError(res: request.Response, status: number, code: string) {
+    > 133 |     expect(res.status).toBe(status);
+          |                        ^
+      134 |     expect(Object.keys(res.body)).toEqual(['error']);
+      135 |     expect(res.body.error.code).toBe(code);
+      136 |   }
+
+      at expectError (test/integration/f03-service-desk.spec.ts:133:24)
+      at Object.<anonymous> (test/integration/f03-service-desk.spec.ts:165:5)
+
+  ● F-03 Operator service desk (integration) › TEST-26 / AC-26: starting or completing a WAITING entry returns 409 INVALID_TRANSITION (C-2)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 409
+    Received: 404
+
+      131 |
+      132 |   function expectError(res: request.Response, status: number, code: string) {
+    > 133 |     expect(res.status).toBe(status);
+          |                        ^
+      134 |     expect(Object.keys(res.body)).toEqual(['error']);
+      135 |     expect(res.body.error.code).toBe(code);
+      136 |   }
+
+      at expectError (test/integration/f03-service-desk.spec.ts:133:24)
+      at Object.<anonymous> (test/integration/f03-service-desk.spec.ts:175:5)
+
+FAIL test/unit/entry-status.spec.ts
+  ● Test suite failed to run
+
+    test/unit/entry-status.spec.ts:2:72 - error TS2307: Cannot find module '../../src/domain/entry-status' or its corresponding type declarations.
+
+    2 import { ENTRY_ACTIONS, ENTRY_STATUSES, EntryAction, nextStatus } from '../../src/domain/entry-status';
+                                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    test/unit/entry-status.spec.ts:22:44 - error TS7006: Parameter 'from' implicitly has an 'any' type.
+
+    22   const rejected = ENTRY_STATUSES.flatMap((from) =>
+                                                  ~~~~
+    test/unit/entry-status.spec.ts:23:27 - error TS7006: Parameter 'action' implicitly has an 'any' type.
+
+    23     ENTRY_ACTIONS.filter((action) => !ALLOWED.some(([f, a]) => f === from && a === action)).map(
+                                 ~~~~~~
+    test/unit/entry-status.spec.ts:24:8 - error TS7006: Parameter 'action' implicitly has an 'any' type.
+
+    24       (action) => [from, action] as [EntryStatus, EntryAction],
+              ~~~~~~
+
+Test Suites: 2 failed, 2 total
+Tests:       4 failed, 1 passed, 5 total
+Snapshots:   0 total
+Time:        4.246 s
+Ran all test suites matching /test\\integration\\f03-service-desk.spec.ts|test\\unit\\entry-status.spec.ts/i.
