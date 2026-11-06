@@ -23,7 +23,14 @@ describe('Database and Migration Smoke Verification', () => {
   });
 
   it('should explicitly connect to the test database', () => {
-    expect(dataSource.options.database).toBe(process.env.DATABASE_NAME_TEST || 'queue_system_test');
+    expect(dataSource.options.database).toBe(process.env.DATABASE_NAME_TEST || 'queue_test');
+  });
+
+  it('should use the separate test Postgres instance (port 5433), not the dev database', async () => {
+    const opts = dataSource.options as { port?: number };
+    expect(opts.port).toBe(Number(process.env.DATABASE_PORT_TEST) || 5433);
+    const rows: Array<{ db: string }> = await dataSource.query('SELECT current_database() AS db');
+    expect(rows[0].db).toBe(process.env.DATABASE_NAME_TEST || 'queue_test');
   });
 
   it('should have all 6 core tables present in the database', async () => {

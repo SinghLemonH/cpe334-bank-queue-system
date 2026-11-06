@@ -233,7 +233,7 @@ Every other pair is rejected with `INVALID_TRANSITION` and changes no data (BR-0
 
 | Task | Command | Notes |
 |---|---|---|
-| Start PostgreSQL | `npm run db:up` | `docker-compose.yml` runs `postgres:17-alpine`; `docker/init-db.sql` also creates the test database `queue_system_test` |
+| Start PostgreSQL | `npm run db:up` | `docker-compose.yml` runs two `postgres:17-alpine` containers: dev (`queue_dev`, port 5432) and test (`queue_test`, port 5433, disposable) |
 | Apply migrations | `npm run db:migrate` | Migration 001 creates every Sprint 1 table, constraint and index, and enables row-level security on all tables |
 | Seed demo data | `npm run db:seed` | Idempotent; can be re-run safely |
 | Reset | `npm run db:reset` | Development only |
