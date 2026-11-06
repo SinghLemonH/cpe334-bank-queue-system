@@ -3,7 +3,8 @@ export const dynamic = 'force-dynamic';
 async function forward(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   const { path } = await ctx.params;
   const url = new URL(req.url);
-  const target = `${process.env.API_BASE_URL}/api/${path.join('/')}${url.search}`;
+  const apiBase = process.env.API_BASE_URL ?? 'http://localhost:3001';
+  const target = `${apiBase}/api/${path.join('/')}${url.search}`;
   const headers = new Headers(req.headers);
   headers.delete('host');
   const res = await fetch(target, {
