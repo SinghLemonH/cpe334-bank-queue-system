@@ -1,5 +1,7 @@
 services:
   # Development database (npm run dev:*, db:migrate, db:seed)
+  # Host ports follow DATABASE_PORT / DATABASE_PORT_TEST (shell or root .env), so a
+  # local Postgres already on 5432 can be avoided, e.g. DATABASE_PORT=5434.
   postgres:
     image: postgres:17-alpine
     container_name: queue_postgres
@@ -9,7 +11,7 @@ services:
       POSTGRES_PASSWORD: queue
       POSTGRES_DB: queue_dev
     ports:
-      - "5432:5432"
+      - "${DATABASE_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -29,7 +31,7 @@ services:
       POSTGRES_PASSWORD: queue
       POSTGRES_DB: queue_test
     ports:
-      - "5433:5432"
+      - "${DATABASE_PORT_TEST:-5433}:5432"
     tmpfs:
       - /var/lib/postgresql/data
     healthcheck:
