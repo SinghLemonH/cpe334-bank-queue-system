@@ -1,0 +1,10 @@
+﻿> @queue-system/api@0.1.0 test
+> jest --config jest.config.ts --runInBand -t TEST-11 --no-colors
+
+PASS test/integration/f02-join-queue.spec.ts (6.84 s)
+
+Test Suites: 6 skipped, 1 passed, 1 of 7 total
+Tests:       42 skipped, 1 passed, 43 total
+Snapshots:   0 total
+Time:        17.25 s, estimated 20 s
+Ran all test suites with tests matching "TEST-11".
