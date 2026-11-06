@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { HealthController } from './presentation/health.controller';
 import { ClockModule } from './common/clock.module';
 import { getDataSourceOptions } from './infrastructure/data-source';
+import { AuthModule } from './modules/auth.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { getDataSourceOptions } from './infrastructure/data-source';
       autoLoadEntities: true,
     }),
     ClockModule,
+    AuthModule,
   ],
   controllers: [HealthController],
 })

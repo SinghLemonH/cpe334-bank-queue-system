@@ -65,18 +65,38 @@ export class QueueNotAssignedError extends DomainError {
   }
 }
 
+/** 401 UNAUTHENTICATED: no cookie, unknown token or expired session (contract SA-2). */
 export class UnauthorizedError extends DomainError {
   readonly statusCode = 401;
-  readonly errorCode = 'UNAUTHORIZED';
+  readonly errorCode = 'UNAUTHENTICATED';
   constructor(message = 'Authentication required') {
     super(message);
   }
 }
 
+/** 401 INVALID_CREDENTIALS: same body for a wrong password and an unknown user (AC-02). */
+export class InvalidCredentialsError extends DomainError {
+  readonly statusCode = 401;
+  readonly errorCode = 'INVALID_CREDENTIALS';
+  constructor(message = 'Invalid username or password.') {
+    super(message);
+  }
+}
+
+/** 403 FORBIDDEN: the caller's role may not use this endpoint (contract SA-3). */
 export class ForbiddenRoleError extends DomainError {
   readonly statusCode = 403;
-  readonly errorCode = 'FORBIDDEN_ROLE';
+  readonly errorCode = 'FORBIDDEN';
   constructor(message = 'Operation forbidden for this role') {
+    super(message);
+  }
+}
+
+/** 415 UNSUPPORTED_MEDIA_TYPE: a JSON-body endpoint received another content type. */
+export class UnsupportedMediaTypeError extends DomainError {
+  readonly statusCode = 415;
+  readonly errorCode = 'UNSUPPORTED_MEDIA_TYPE';
+  constructor(message = 'Content-Type must be application/json') {
     super(message);
   }
 }
