@@ -11,6 +11,7 @@ const config: Config = {
   coverageDirectory: './coverage',
   testEnvironment: 'node',
   setupFiles: ['<rootDir>/test/helpers/setup-env.ts'],
+  globalSetup: '<rootDir>/test/helpers/global-setup.ts',
 };
 
 export default config;

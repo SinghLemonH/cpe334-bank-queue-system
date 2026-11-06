@@ -19,7 +19,8 @@
     "db:down": "docker compose down",
     "db:migrate": "npm run --workspace=apps/api migration:run",
     "db:seed": "npm run --workspace=apps/api seed",
-    "db:reset": "npm run --workspace=apps/api db:reset"
+    "db:reset": "npm run --workspace=apps/api db:reset",
+    "test:e2e": "npm run --workspace=apps/web test:e2e"
   },
   "devDependencies": {
     "prettier": "^3.5.0"
