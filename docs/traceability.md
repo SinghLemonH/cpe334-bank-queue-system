@@ -1,12 +1,12 @@
 # Requirements Traceability Matrix: Bank Branch Queue System
 
-Version 1.0 (5 Nov 2026). Requirement definitions are in `docs/srs.md`; feature descriptions are in `docs/features.md`.
+Version 1.1 (7 Nov 2026). Requirement definitions are in `docs/srs.md`; feature descriptions are in `docs/features.md`. Version 1.1 records the Sprint 1 test files and marks those rows implemented. It does not record pass counts.
 
 ## 1. How to read this document
 
 - **Sprint 1 requirements** are linked to acceptance criteria (AC) and planned tests. The AC and TEST IDs are pre-assigned one to one (`AC-NN` is verified by `TEST-NN`). The three UI criteria AC-08, AC-18 and AC-30 are verified by Playwright tests titled TEST-08, TEST-18 and TEST-30 (E2E-01 and E2E-02).
 - **Sprint 2 and Sprint 3 requirements** are allocated to a feature and a sprint now. Their AC and TEST IDs are assigned in that sprint's contract (Issue #8 for Sprint 2, Issue #13 for Sprint 3) and are deliberately not listed yet. The "planned verification" column states the intended approach only.
-- **Status** is `Planned` for every row: no implementation or test results exist at the time of writing. Actual results are reported in Part F of the Deliverable 1 PDF.
+- **Status** `Implemented` means the Sprint 1 code and its test file are on `sprint-1-staging`. It does not mean a pass count. Pass, fail and skip counts are printed by `scripts/evidence.mjs` (Jest) and by `npm run test:e2e` (Playwright) on a fresh clone of tag `v0.1.0-sprint1`, and that console log is attached to the GitHub Release. `Status` stays `Planned` for Sprint 2 and Sprint 3.
 
 ## 2. Requirement to feature to sprint to verification
 
@@ -14,11 +14,11 @@ Version 1.0 (5 Nov 2026). Requirement definitions are in `docs/srs.md`; feature 
 
 | Requirement | Feature | Sprint | AC / TEST (Sprint 1) or planned verification | Status |
 |---|---|---|---|---|
-| FR-01 | F-01 Auth and RBAC | Sprint 1 | AC-01, AC-02, AC-03, AC-04, AC-05, AC-08 / TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-08 | Planned |
-| FR-02 | F-02 Join queue and my ticket | Sprint 1 | AC-09, AC-10, AC-17, AC-18 / TEST-09, TEST-10, TEST-17, TEST-18 | Planned |
-| FR-03 | F-02 Join queue and my ticket | Sprint 1 | AC-10, AC-16, AC-18 / TEST-10, TEST-16, TEST-18 | Planned |
-| FR-04 | F-03 Operator service desk | Sprint 1 | AC-20, AC-21, AC-28, AC-30 / TEST-20, TEST-21, TEST-28, TEST-30 | Planned |
-| FR-05 | F-03 Operator service desk | Sprint 1 | AC-25, AC-28, AC-30 / TEST-25, TEST-28, TEST-30 | Planned |
+| FR-01 | F-01 Auth and RBAC | Sprint 1 | AC-01, AC-02, AC-03, AC-04, AC-05, AC-08 / TEST-01, TEST-02, TEST-03, TEST-04, TEST-05, TEST-08 | Implemented |
+| FR-02 | F-02 Join queue and my ticket | Sprint 1 | AC-09, AC-10, AC-17, AC-18 / TEST-09, TEST-10, TEST-17, TEST-18 | Implemented |
+| FR-03 | F-02 Join queue and my ticket | Sprint 1 | AC-10, AC-16, AC-18 / TEST-10, TEST-16, TEST-18 | Implemented |
+| FR-04 | F-03 Operator service desk | Sprint 1 | AC-20, AC-21, AC-28, AC-30 / TEST-20, TEST-21, TEST-28, TEST-30 | Implemented |
+| FR-05 | F-03 Operator service desk | Sprint 1 | AC-25, AC-28, AC-30 / TEST-25, TEST-28, TEST-30 | Implemented |
 | FR-06 | F-04 Customer cancel | Sprint 2 | IDs assigned in the Sprint 2 contract. Planned: API tests for cancelling own WAITING/CALLED entry and rejecting other states; UI cancel on /my-ticket; E2E-03 | Planned |
 | FR-07 | F-05 No-show handling | Sprint 2 | IDs assigned in the Sprint 2 contract. Planned: API tests for no-show by the calling operator; UI action on /operator; E2E-03 | Planned |
 | FR-08 | F-06 Public board | Sprint 2 | IDs assigned in the Sprint 2 contract. Planned: API test of the board response; E2E-04 (/board) | Planned |
@@ -26,22 +26,22 @@ Version 1.0 (5 Nov 2026). Requirement definitions are in `docs/srs.md`; feature 
 | FR-10 | F-09 Priority lane | Sprint 3 | IDs assigned in the Sprint 3 contract. Planned: API tests: senior who joins last is called first; badge shown in UI | Planned |
 | FR-11 | F-10 Service summary | Sprint 3 | IDs assigned in the Sprint 3 contract. Planned: API test of summary numbers against known fixtures; table on /operator/summary | Planned |
 | FR-12 | F-08 Queue open/close and end-of-day | Sprint 2 | IDs assigned in the Sprint 2 contract. Planned: API tests for open/close (join rejected, serving continues) and end-day | Planned |
-| FR-13 | F-03 Operator service desk | Sprint 1 | AC-19, AC-30 / TEST-19, TEST-30 | Planned |
+| FR-13 | F-03 Operator service desk | Sprint 1 | AC-19, AC-30 / TEST-19, TEST-30 | Implemented |
 
 ### 2.2 Business rules
 
 | Requirement | Feature | Sprint | AC / TEST (Sprint 1) or planned verification | Status |
 |---|---|---|---|---|
-| BR-01 | F-02 Join queue and my ticket | Sprint 1 | AC-10, AC-14, AC-15 / TEST-10, TEST-14, TEST-15 | Planned |
-| BR-02 | F-02 Join queue and my ticket | Sprint 1 | AC-11, AC-12 / TEST-11, TEST-12 | Planned |
-| BR-03 | F-03 Operator service desk | Sprint 1 | AC-20, AC-24 / TEST-20, TEST-24 | Planned |
-| BR-04 | F-03 Operator service desk | Sprint 1 | AC-26 / TEST-26 | Planned |
-| BR-05 | F-03 Operator service desk | Sprint 1 | AC-19, AC-23 / TEST-19, TEST-23 | Planned |
-| BR-06 | F-03 Operator service desk | Sprint 1 | AC-22 / TEST-22 | Planned |
-| BR-07 | F-03 Operator service desk | Sprint 1 | AC-24, AC-27 / TEST-24, TEST-27 | Planned |
-| BR-08 | F-02 Join queue and my ticket | Sprint 1 | No executable test (manual check, see section 5) | Planned |
-| BR-09 | F-02 Join queue and my ticket | Sprint 1 | AC-13 / TEST-13 | Planned |
-| BR-10 | F-02 Join queue and my ticket | Sprint 1 | AC-15 / TEST-15 | Planned |
+| BR-01 | F-02 Join queue and my ticket | Sprint 1 | AC-10, AC-14, AC-15 / TEST-10, TEST-14, TEST-15 | Implemented |
+| BR-02 | F-02 Join queue and my ticket | Sprint 1 | AC-11, AC-12 / TEST-11, TEST-12 | Implemented |
+| BR-03 | F-03 Operator service desk | Sprint 1 | AC-20, AC-24 / TEST-20, TEST-24 | Implemented |
+| BR-04 | F-03 Operator service desk | Sprint 1 | AC-26 / TEST-26 | Implemented |
+| BR-05 | F-03 Operator service desk | Sprint 1 | AC-19, AC-23 / TEST-19, TEST-23 | Implemented |
+| BR-06 | F-03 Operator service desk | Sprint 1 | AC-22 / TEST-22 | Implemented |
+| BR-07 | F-03 Operator service desk | Sprint 1 | AC-24, AC-27 / TEST-24, TEST-27 | Implemented |
+| BR-08 | F-02 Join queue and my ticket | Sprint 1 | No executable test (manual check, see section 5) | Manual check |
+| BR-09 | F-02 Join queue and my ticket | Sprint 1 | AC-13 / TEST-13 | Implemented |
+| BR-10 | F-02 Join queue and my ticket | Sprint 1 | AC-15 / TEST-15 | Implemented |
 | BR-11 | F-04 Customer cancel | Sprint 2 | IDs assigned in the Sprint 2 contract. Planned: API tests: another customer's entry returns 404, terminal entries are rejected | Planned |
 | BR-12 | F-05 No-show handling | Sprint 2 | IDs assigned in the Sprint 2 contract. Planned: TDD with a fixed Clock around the grace-period boundary (TEST red then green) | Planned |
 | BR-13 | F-07 Counters | Sprint 2 | IDs assigned in the Sprint 2 contract. Planned: API test: second call on an occupied counter is rejected (migration 002 index) | Planned |
@@ -53,13 +53,13 @@ Version 1.0 (5 Nov 2026). Requirement definitions are in `docs/srs.md`; feature 
 
 | Requirement | Feature | Sprint | AC / TEST (Sprint 1) or planned verification | Status |
 |---|---|---|---|---|
-| NFR-01 | F-01 Auth and RBAC | Sprint 1 | AC-03, AC-06 / TEST-03, TEST-06 | Planned |
-| NFR-02 | F-01 Auth and RBAC | Sprint 1 | AC-07 / TEST-07 | Planned |
-| NFR-03 | F-02 Join queue and my ticket | Sprint 1 | AC-14 / TEST-14 | Planned |
-| NFR-04 | F-03 Operator service desk | Sprint 1 | AC-29 / TEST-29. Sprint 2: deployment persistence check on GCP (Lab 5) | Planned |
+| NFR-01 | F-01 Auth and RBAC | Sprint 1 | AC-03, AC-06 / TEST-03, TEST-06 | Implemented |
+| NFR-02 | F-01 Auth and RBAC | Sprint 1 | AC-07 / TEST-07 | Implemented |
+| NFR-03 | F-02 Join queue and my ticket | Sprint 1 | AC-14 / TEST-14 | Implemented |
+| NFR-04 | F-03 Operator service desk | Sprint 1 | AC-29 / TEST-29. Sprint 2: deployment persistence check on GCP (Lab 5) | Implemented locally; GCP is Lab 5 |
 | NFR-05 | F-06 Public board | Sprint 2 | IDs assigned in the Sprint 2 contract. Planned: API test asserting the exact set of keys in the board response | Planned |
 | NFR-06 | F-11 Hardening | Sprint 3 | IDs assigned in the Sprint 3 contract. Planned: Measurement script over 50 sequential joins; result saved with the commit | Planned |
-| NFR-07 | F-01 Auth and RBAC | Sprint 1 | No executable test (manual check, see section 5) | Planned |
+| NFR-07 | F-01 Auth and RBAC | Sprint 1 | No executable test (manual check, see section 5) | Manual check |
 
 Note: NFR-04 is established and verified locally in Sprint 1 and verified again on the GCP deployment in Sprint 2.
 
@@ -134,3 +134,22 @@ Unit tests support the AC as follows: UT-01 transition table (AC-26), UT-02 disp
 | none | No scope changes since baseline v1.0 | | |
 
 Future changes (for example D-22, optional `counterId` as F-03 contract v2) are recorded here with date, reason and the affected requirement, feature, AC and tests.
+
+## 6. Sprint 1 test files
+
+The file names below are the ones on `sprint-1-staging` after F-01, F-02 and F-03. The result column of Part F is produced by `npm run evidence` and is not stored in this document.
+
+| AC | TEST | File |
+|---|---|---|
+| AC-01..AC-07 | TEST-01..TEST-07 | `apps/api/test/integration/f01-auth.spec.ts` |
+| AC-08 | TEST-08 | `apps/web/e2e/auth.spec.ts` |
+| AC-09..AC-17 | TEST-09..TEST-17 | `apps/api/test/integration/f02-join-queue.spec.ts` |
+| AC-15 | UT-02 | `apps/api/test/unit/display-number.spec.ts` |
+| AC-15 | UT-03 | `apps/api/test/unit/queue-date.spec.ts` |
+| AC-18 | TEST-18 | `apps/web/e2e/sprint1-journey.spec.ts` |
+| AC-19..AC-29 | TEST-19..TEST-29 | `apps/api/test/integration/f03-service-desk.spec.ts` |
+| AC-20 | UT-04 | `apps/api/test/unit/fifo-ordering-policy.spec.ts` |
+| AC-26 | UT-01 | `apps/api/test/unit/entry-status.spec.ts` |
+| AC-30 | TEST-30 | `apps/web/e2e/sprint1-journey.spec.ts` |
+
+TDD logs already committed with the feature PRs: `docs/sprints/sprint-1/evidence/TEST-11-red.txt`, `TEST-11-green.txt`, `TEST-26-red.txt`, `TEST-26-green.txt`.

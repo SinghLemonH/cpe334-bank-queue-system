@@ -20,7 +20,8 @@
     "db:migrate": "npm run --workspace=apps/api migration:run",
     "db:seed": "npm run --workspace=apps/api seed",
     "db:reset": "npm run --workspace=apps/api db:reset",
-    "test:e2e": "npm run --workspace=apps/web test:e2e"
+    "test:e2e": "npm run --workspace=apps/web test:e2e",
+    "evidence": "node scripts/evidence.mjs"
   },
   "devDependencies": {
     "prettier": "^3.5.0"
