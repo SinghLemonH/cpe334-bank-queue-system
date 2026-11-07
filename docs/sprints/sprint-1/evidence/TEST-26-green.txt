@@ -1,0 +1,42 @@
+# TEST-26 + UT-01 green run (after feat(F-03) transition table and conditional updates)
+# command: npx jest --runInBand --verbose -t "TEST-26|UT-01" (skipped tests of other suites omitted)
+
+PASS test/integration/f03-service-desk.spec.ts
+  F-03 Operator service desk (integration)
+    √ TEST-26 / AC-26: completing a CALLED entry returns 409 INVALID_TRANSITION and leaves the row unchanged (113 ms)
+    √ TEST-26 / AC-26: starting a SERVING entry (start twice) returns 409 INVALID_TRANSITION (51 ms)
+    √ TEST-26 / AC-26: starting or completing a COMPLETED entry returns 409 INVALID_TRANSITION (85 ms)
+    √ TEST-26 / AC-26: starting or completing a WAITING entry returns 409 INVALID_TRANSITION (C-2) (62 ms)
+    √ TEST-26 / AC-26: start or complete with a malformed or unknown id returns 404 NOT_FOUND (67 ms)
+
+PASS test/unit/entry-status.spec.ts
+  UT-01 entry status transitions
+    √ UT-01: covers 7 statuses x 3 actions
+    √ UT-01: WAITING + call -> CALLED is allowed
+    √ UT-01: CALLED + start -> SERVING is allowed
+    √ UT-01: SERVING + complete -> COMPLETED is allowed
+    √ UT-01: exactly 18 pairs are rejected
+    √ UT-01: WAITING + start throws InvalidTransitionError (4 ms)
+    √ UT-01: WAITING + complete throws InvalidTransitionError
+    √ UT-01: CALLED + call throws InvalidTransitionError (1 ms)
+    √ UT-01: CALLED + complete throws InvalidTransitionError
+    √ UT-01: SERVING + call throws InvalidTransitionError (1 ms)
+    √ UT-01: SERVING + start throws InvalidTransitionError
+    √ UT-01: COMPLETED + call throws InvalidTransitionError (1 ms)
+    √ UT-01: COMPLETED + start throws InvalidTransitionError
+    √ UT-01: COMPLETED + complete throws InvalidTransitionError
+    √ UT-01: CANCELLED + call throws InvalidTransitionError (1 ms)
+    √ UT-01: CANCELLED + start throws InvalidTransitionError
+    √ UT-01: CANCELLED + complete throws InvalidTransitionError
+    √ UT-01: NO_SHOW + call throws InvalidTransitionError (1 ms)
+    √ UT-01: NO_SHOW + start throws InvalidTransitionError
+    √ UT-01: NO_SHOW + complete throws InvalidTransitionError
+    √ UT-01: EXPIRED + call throws InvalidTransitionError
+    √ UT-01: EXPIRED + start throws InvalidTransitionError
+    √ UT-01: EXPIRED + complete throws InvalidTransitionError (1 ms)
+
+Test Suites: 8 skipped, 2 passed, 2 of 10 total
+Tests:       63 skipped, 28 passed, 91 total
+Snapshots:   0 total
+Time:        5.809 s, estimated 12 s
+Ran all test suites with tests matching "TEST-26|UT-01".

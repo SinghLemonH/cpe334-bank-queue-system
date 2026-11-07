@@ -1,0 +1,29 @@
+{
+  "name": "cpe334-bank-queue-system",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0 <25.0.0"
+  },
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run --workspace=apps/api start:dev",
+    "dev:web": "npm run --workspace=apps/web dev",
+    "build": "npm run --workspaces --if-present build",
+    "test": "npm run --workspaces --if-present test",
+    "lint": "npm run --workspaces --if-present lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:migrate": "npm run --workspace=apps/api migration:run",
+    "db:seed": "npm run --workspace=apps/api seed",
+    "db:reset": "npm run --workspace=apps/api db:reset",
+    "test:e2e": "npm run --workspace=apps/web test:e2e",
+    "evidence": "node scripts/evidence.mjs"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.0"
+  }
+}
