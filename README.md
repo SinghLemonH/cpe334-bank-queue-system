@@ -36,7 +36,9 @@ Copy `.env.example` to `.env`. The database password in that example is the synt
 | `SESSION_TTL_HOURS` | Session lifetime. Default `8`. |
 | `SEED_DEMO_PASSWORD` | Password the seed command writes for every demo account. Set it in `.env` before `npm run db:seed`. The README does not treat the placeholder in `.env.example` as a published password; change it if you want. |
 
-`SESSION_SECRET` is present in `.env.example` and is not read by the Sprint 1 session code. Sessions store a SHA-256 hash of a random token.
+Sessions store a SHA-256 hash of a random token, so there is no session signing secret. Lab 5 adds `DB_POOL_MAX` and the `DATABASE_SSL_*` options; the full list, and which values are secret in the cloud, is in [docs/labs/lab05/deployment.md](docs/labs/lab05/deployment.md).
+
+To run the whole app in Docker from a fresh clone: `cp .env.example .env` then `docker compose --profile app up --build`, and open http://localhost:3000.
 
 ## Database
 
