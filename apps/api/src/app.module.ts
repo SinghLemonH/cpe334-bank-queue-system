@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HealthController } from './presentation/health.controller';
+import { ReadyController } from './presentation/ready.controller';
 import { ClockModule } from './common/clock.module';
 import { getDataSourceOptions } from './infrastructure/data-source';
 import { AuthModule } from './modules/auth.module';
@@ -23,6 +24,6 @@ import { ServiceDeskModule } from './modules/service-desk.module';
     QueueModule,
     ServiceDeskModule,
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, ReadyController],
 })
 export class AppModule {}
