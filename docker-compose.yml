@@ -55,7 +55,6 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    image: queue-api:local
     command: ["npm", "run", "db:prepare:prod"]
     environment: &api-db-env
       NODE_ENV: production
@@ -76,7 +75,6 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-    image: queue-api:local
     environment:
       <<: *api-db-env
       PORT: "3001"
@@ -98,7 +96,6 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-    image: queue-web:local
     environment:
       PORT: "3000"
       API_BASE_URL: http://api:3001
