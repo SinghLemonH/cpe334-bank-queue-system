@@ -40,5 +40,73 @@ services:
       timeout: 5s
       retries: 5
 
+  # ---------------------------------------------------------------------------
+  # Full app in containers (Lab 5, C-03). Off by default so `npm run db:up` still
+  # starts only the databases. Run from a fresh clone:
+  #   cp .env.example .env
+  #   docker compose --profile app up --build
+  # Then open http://localhost:3000 (sign in with a seeded user and SEED_DEMO_PASSWORD).
+  # The containers use the same images as Cloud Run; only the env differs.
+  # ---------------------------------------------------------------------------
+
+  # One-shot job: migrations + idempotent seed, from compiled JS (same as Cloud Run job).
+  migrate:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: queue-api:local
+    command: ["npm", "run", "db:prepare:prod"]
+    environment: &api-db-env
+      NODE_ENV: production
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_USER: queue
+      DATABASE_PASSWORD: queue
+      DATABASE_NAME: queue_dev
+      DATABASE_SSL: "false"
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:?Set SEED_DEMO_PASSWORD in .env (copy .env.example)}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: queue-api:local
+    environment:
+      <<: *api-db-env
+      PORT: "3001"
+      COOKIE_SECURE: "false"
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-8}
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3001/api/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: queue-web:local
+    environment:
+      PORT: "3000"
+      API_BASE_URL: http://api:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   postgres_data:
