@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { VersionFooter } from '@/components/VersionFooter';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -13,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-[#f2f1ec] font-sans text-stone-900 antialiased">{children}</body>
+      <body className="min-h-screen bg-[#f2f1ec] font-sans text-stone-900 antialiased">
+        {children}
+        <VersionFooter />
+      </body>
     </html>
   );
 }
