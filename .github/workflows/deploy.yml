@@ -96,6 +96,9 @@ jobs:
           python-version: '3.11'
 
       - name: Execute Smoke Tests
+        env:
+          # The live /api/version must report exactly the commit this run deployed (R-08).
+          EXPECTED_COMMIT: ${{ inputs.image_tag || github.sha }}
         run: |
           WEB_URL=$(gcloud run services describe queue-web --region="${{ vars.GCP_REGION }}" --project="${{ vars.GCP_PROJECT_ID }}" --format='value(status.url)')
           API_URL=$(gcloud run services describe queue-api --region="${{ vars.GCP_REGION }}" --project="${{ vars.GCP_PROJECT_ID }}" --format='value(status.url)')

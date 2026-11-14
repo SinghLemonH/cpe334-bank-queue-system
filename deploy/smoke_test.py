@@ -7,7 +7,7 @@ Checks:
   1. GET <API_URL>/api/health -> 200 OK
   2. GET <API_URL>/api/ready  -> 200 OK (verifies active database connectivity)
   3. GET <WEB_URL>/           -> 200 OK
-  4. (Optional) GET <API_URL>/api/version -> 200 OK (added in Lab 5 Milestone L5-4)
+  4. GET <WEB_URL>/api/version -> 200, and commit == $EXPECTED_COMMIT when that is set (L5-4, R-08)
 """
 
 import sys
@@ -15,6 +15,7 @@ import time
 import urllib.request
 import urllib.error
 import json
+import os
 
 def check_url(url, description, expected_status=200, retries=5, delay=5):
     print(f"Checking {description} at: {url} ...", end=" ", flush=True)
@@ -74,15 +75,23 @@ def main():
     if not check_url(f"{web_url}/", "Frontend Home Page (/)"):
         all_passed = False
 
-    # 4. API Version Check (Optional in L5-3, mandatory in L5-4)
-    print("Checking API Version (/api/version) [Optional] ...", end=" ", flush=True)
+    # 5. Running release (R-08, mandatory since L5-4): /api/version through the web proxy
+    #    must report the commit this pipeline deployed (EXPECTED_COMMIT), when given.
+    expected_commit = os.environ.get("EXPECTED_COMMIT", "").strip()
+    print("Checking running release (/api/version) ...", end=" ", flush=True)
     try:
-        req = urllib.request.Request(f"{api_url}/api/version", headers={"User-Agent": "SmokeTest/1.0"})
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        req = urllib.request.Request(f"{web_url}/api/version", headers={"User-Agent": "SmokeTest/1.0"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode())
-            print(f"PASS (Version: {data.get('version', 'unknown')}, Commit: {data.get('commit', 'unknown')})")
-    except Exception:
-        print("SKIP (Endpoint not yet implemented in L5-3)")
+        commit = data.get("commit", "")
+        if expected_commit and commit != expected_commit:
+            print(f"FAIL (running commit {commit}, expected {expected_commit})")
+            all_passed = False
+        else:
+            print(f"PASS (Version: {data.get('version', 'unknown')}, Commit: {commit})")
+    except Exception as e:
+        print(f"FAIL (Error: {e})")
+        all_passed = False
 
     print("========================================================================")
     if all_passed:
