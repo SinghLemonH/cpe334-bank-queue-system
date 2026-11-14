@@ -92,9 +92,53 @@ Through the web service, the same paths work as `https://<web-url>/api/health` a
 
 ## 5. CI
 
-`.github/workflows/ci-docker.yml` runs on every Pull Request into `staging` or `main`. Its job id `test-and-docker` is the required status check. The steps are: `npm ci`, lint, build, compiled migrate + seed, Jest (real PostgreSQL 17 service containers), Playwright e2e, and a Docker build of both images (no push). It uses synthetic CI-only database credentials and no repository secrets. Actions are pinned to full commit SHAs; Dependabot proposes updates weekly.
+`.github/workflows/ci-docker.yml` runs on every Pull Request into `Lab5-staging` or `main`. Its job id `test-and-docker` is the required status check. The steps are: `npm ci`, lint, build, compiled migrate + seed, Jest (real PostgreSQL 17 service containers), Playwright e2e, and a Docker build of both images (no push). It uses synthetic CI-only database credentials and no repository secrets. Actions are pinned to full commit SHAs; Dependabot proposes updates weekly.
 
-## 6. To be completed
+## 6. GCP Deployment & Pipeline Architecture (L5-3)
 
-- GCP project `cpe334-bankqueue`, region `asia-southeast1`, resource names, and the first deploy (L5-3)
-- Release procedure and how to find the running commit (L5-4)
+### 6.1 Google Cloud Platform Resources
+- **Project ID**: Configured via environment variable (`$PROJECT_ID`)
+- **Region**: `asia-southeast1` (Singapore)
+- **Artifact Registry**: `queue-repo` (Docker format)
+- **Cloud Run Job**: `queue-migrate` (Tasks: `npm run db:prepare:prod`, Service Account: `queue-runtime`)
+- **Cloud Run Services**:
+  - `queue-api`: NestJS API container, port 3001, min instances 0, max instances 2, `--allow-unauthenticated`.
+  - `queue-web`: Next.js web container, port 3000, min instances 0, max instances 2, runtime `API_BASE_URL` pointing to `queue-api`, `--allow-unauthenticated`.
+- **Runtime Service Account**: `queue-runtime` (Granted `roles/secretmanager.secretAccessor` on secrets only).
+- **Secret Manager Secrets**:
+  - `DATABASE_PASSWORD`: Supabase PostgreSQL password.
+  - `SEED_DEMO_PASSWORD`: Production seed password for demo accounts.
+- **CI/CD Authentication**: Workload Identity Federation (WIF) with pool `github-actions` and provider `github-main`. No JSON service account keys are stored or used.
+
+### 6.2 First Deployment (Cloud Shell)
+```bash
+# 1. Preview changes (Dry-Run mode)
+DRY_RUN=1 bash deploy/deploy.sh
+
+# 2. Execute First Deployment
+export SUPABASE_HOST="aws-0-ap-southeast-1.pooler.supabase.com"
+export SUPABASE_PORT="5432"
+export SUPABASE_USER="postgres.<your-project-ref>"
+export SUPABASE_DB="postgres"
+bash deploy/deploy.sh
+```
+
+### 6.3 Automated Release Pipeline & Merge Gate
+- **Deploy Workflow**: `.github/workflows/deploy.yml` triggers on push to `main` (and manual `workflow_dispatch` for rollbacks).
+  1. Reuses `ci-docker.yml` checks (tests & build must pass).
+  2. Authenticates to GCP via WIF using GitHub environment `demo`.
+  3. Builds & pushes images tagged with full 40-character commit SHA to Artifact Registry.
+  4. Calls `deploy/release.sh` which deploys using immutable image digests.
+  5. Updates `queue-migrate` to the new image digest and runs DB migrations.
+  6. Updates `queue-api` and `queue-web` revisions by digest.
+  7. Runs `deploy/smoke_test.py` to confirm `/api/health`, `/api/ready`, and `/` are healthy.
+- **Rollback Mechanism**:
+  - Run workflow `Deploy demo` via GitHub Actions UI (`workflow_dispatch`).
+  - Provide `image_tag` (full commit SHA of a previously built release).
+  - Skips CI, builds, and migrations; redeploys the previous image digest directly and smoke tests the live deployment.
+- **Branch Ruleset**: `protect-main-and-staging` enforces that all PRs into `main` and `Lab5-staging` require 1 peer approval and the `test-and-docker` status check must pass before merging.
+
+### 6.4 Release Procedure and Finding the Running Commit (L5-4)
+- How to inspect running version:
+  - From CLI: `gcloud run services describe queue-api --region=asia-southeast1 --format='value(spec.template.spec.containers[0].image)'`
+  - In app: Public `/api/version` endpoint and footer badge displaying the commit SHA (implemented in Milestone L5-4).
