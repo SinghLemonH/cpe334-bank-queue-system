@@ -28,7 +28,8 @@ describe('GET /api/version', () => {
     const res = await request(app.getHttpServer()).get('/api/version').expect(200);
 
     expect(res.body).toEqual({ version: APP_VERSION, commit: sha });
-    expect(APP_VERSION).toBe('0.2.0-lab5');
+    // C-02 (R-06): deliberately wrong expectation so the required check fails. Never merge.
+    expect(APP_VERSION).toBe('9.9.9-intentionally-failing');
   });
 
   it('reports commit "local" when GIT_SHA is not set (local runs)', async () => {
