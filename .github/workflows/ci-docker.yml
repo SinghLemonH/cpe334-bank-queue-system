@@ -1,0 +1,102 @@
+# CI & Docker Build (Lab 5, R-05 / R-06)
+# Runs on every Pull Request into staging or main, by hand, and from deploy.yml (workflow_call).
+# Steps: install -> lint -> build -> migrate + seed (compiled JS, same as the Cloud Run job)
+#        -> unit + integration tests (real PostgreSQL) -> Playwright e2e -> Docker builds (no push).
+# Deploys nothing. The job id `test-and-docker` is the required status check in the ruleset:
+# do not rename it.
+name: CI & Docker Build
+
+on:
+  pull_request:
+    branches: [Lab5-staging, main]
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      # Dev-shaped database: migrations, seed and the e2e journey run here.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: queue
+          POSTGRES_PASSWORD: queue
+          POSTGRES_DB: queue_dev
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U queue -d queue_dev"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      # Separate test database for Jest (tests truncate tables).
+      postgres_test:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: queue
+          POSTGRES_PASSWORD: queue
+          POSTGRES_DB: queue_test
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U queue -d queue_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    # Synthetic CI-only values (same as .env.example); no real secret is used in CI.
+    env:
+      DATABASE_HOST: localhost
+      DATABASE_PORT: "5432"
+      DATABASE_USER: queue
+      DATABASE_PASSWORD: queue
+      DATABASE_NAME: queue_dev
+      DATABASE_PORT_TEST: "5433"
+      DATABASE_NAME_TEST: queue_test
+      DATABASE_SSL: "false"
+      # Seed writes it; the e2e specs sign in with it.
+      SEED_DEMO_PASSWORD: ci_demo_password
+      COOKIE_SECURE: "false"
+      SESSION_TTL_HOURS: "8"
+      API_BASE_URL: http://localhost:3001
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Node.js (.nvmrc)
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build (api + web)
+        run: npm run build
+
+      - name: Migrate and seed (compiled JS, as in the Cloud Run job)
+        run: npm run db:prepare:prod --workspace=apps/api
+
+      - name: Unit and integration tests (Jest, real PostgreSQL)
+        run: npm test
+
+      - name: Install Playwright browser
+        run: npx --workspace=apps/web playwright install --with-deps chromium
+
+      - name: End-to-end tests (Playwright)
+        run: npm run test:e2e
+
+      - name: Build API image (no push)
+        run: docker build -f apps/api/Dockerfile -t queue-api:ci-${{ github.sha }} .
+
+      - name: Build web image (no push)
+        run: docker build -f apps/web/Dockerfile -t queue-web:ci-${{ github.sha }} .

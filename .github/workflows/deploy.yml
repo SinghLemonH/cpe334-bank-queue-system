@@ -1,0 +1,118 @@
+# Deploy to Cloud Run (Lab 5, R-07 / R-08)
+# Triggered on merge to main, and manually via workflow_dispatch with optional image_tag for rollback.
+# Reuses ci-docker.yml via workflow_call for standard releases.
+# For rollbacks (when image_tag is provided), tests/builds/migrations are skipped
+# and the existing immutable image digest is redeployed directly.
+name: Deploy demo
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Rollback: full 40-character commit SHA of an existing image. Empty = standard test, build, and deploy main.'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ----------------------------------------------------------------------------
+  # 1. CI Quality Check (Reuses ci-docker.yml)
+  # Only executes on standard releases (skipped during rollbacks)
+  # ----------------------------------------------------------------------------
+  test:
+    if: inputs.image_tag == ''
+    uses: ./.github/workflows/ci-docker.yml
+
+  # ----------------------------------------------------------------------------
+  # 2. Build, Release and Deploy
+  # ----------------------------------------------------------------------------
+  deploy:
+    needs: [test]
+    if: always() && (needs.test.result == 'success' || inputs.image_tag != '')
+    runs-on: ubuntu-latest
+    environment: demo
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Authenticate to Google Cloud via Workload Identity Federation
+        uses: google-github-actions/auth@6fc4de4b9d37bb86f8252b859d7580c39f207578 # v2.1.7
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@618f00679345e085ea2b459ba27ce848ea44d258 # v2.1.2
+
+      - name: Configure Docker authentication for Artifact Registry
+        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
+
+      # For standard releases: build and push both images with the commit SHA tag
+      - name: Build and push API Docker image
+        if: inputs.image_tag == ''
+        run: |
+          docker build -f apps/api/Dockerfile -t ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/queue-repo/queue-api:${{ github.sha }} .
+          docker push ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/queue-repo/queue-api:${{ github.sha }}
+
+      - name: Build and push Web Docker image
+        if: inputs.image_tag == ''
+        run: |
+          docker build -f apps/web/Dockerfile -t ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/queue-repo/queue-web:${{ github.sha }} .
+          docker push ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/queue-repo/queue-web:${{ github.sha }}
+
+      # Execute release with input validation and environment variable injection
+      - name: Deploy release by digest
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+          GCP_REGION: ${{ vars.GCP_REGION }}
+          REPO_NAME: queue-repo
+          SUPABASE_HOST: ${{ secrets.SUPABASE_HOST }}
+          SUPABASE_USER: ${{ secrets.SUPABASE_USER }}
+          IMAGE_TAG_INPUT: ${{ inputs.image_tag }}
+        run: |
+          TAG="${IMAGE_TAG_INPUT:-${GITHUB_SHA}}"
+          [[ "$TAG" =~ ^[0-9a-f]{40}$ ]] || { echo "Error: Invalid 40-character commit SHA: $TAG" >&2; exit 1; }
+          if [[ -n "$IMAGE_TAG_INPUT" ]]; then
+            export SKIP_MIGRATE=1
+          fi
+          bash deploy/release.sh "$TAG"
+
+      # Verify deployment via smoke test
+      - name: Set up Python for Smoke Tests
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: '3.11'
+
+      - name: Execute Smoke Tests
+        env:
+          # The live /api/version must report exactly the commit this run deployed (R-08).
+          EXPECTED_COMMIT: ${{ inputs.image_tag || github.sha }}
+        run: |
+          WEB_URL=$(gcloud run services describe queue-web --region="${{ vars.GCP_REGION }}" --project="${{ vars.GCP_PROJECT_ID }}" --format='value(status.url)')
+          API_URL=$(gcloud run services describe queue-api --region="${{ vars.GCP_REGION }}" --project="${{ vars.GCP_PROJECT_ID }}" --format='value(status.url)')
+          python3 deploy/smoke_test.py "$WEB_URL" "$API_URL"
+
+      - name: Record deployment summary
+        env:
+          IMAGE_TAG_INPUT: ${{ inputs.image_tag }}
+        run: |
+          WEB_URL=$(gcloud run services describe queue-web --region="${{ vars.GCP_REGION }}" --project="${{ vars.GCP_PROJECT_ID }}" --format='value(status.url)')
+          API_URL=$(gcloud run services describe queue-api --region="${{ vars.GCP_REGION }}" --project="${{ vars.GCP_PROJECT_ID }}" --format='value(status.url)')
+          TAG="${IMAGE_TAG_INPUT:-${GITHUB_SHA}}"
+          echo "### Bank Queue System Deployment Summary 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed Commit SHA**: \`$TAG\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Is Rollback**: \`${{ inputs.image_tag != '' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Web Service URL**: $WEB_URL" >> $GITHUB_STEP_SUMMARY
+          echo "- **API Service URL**: $API_URL" >> $GITHUB_STEP_SUMMARY
