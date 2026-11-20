@@ -149,7 +149,7 @@ Used by `/login`; reuse for any future full-page entry screen.
 |---|---|---|
 | Primary | `flex items-center justify-center gap-2 rounded-lg bg-stone-900 px-4 py-3 text-sm font-semibold text-white hover:bg-stone-800 disabled:opacity-70 disabled:cursor-not-allowed` | One per view: Sign in, Join, Call next, Start, Complete |
 | Secondary | `rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 hover:bg-stone-50` | Logout, Retry, Cancel ticket (S2) |
-| Icon-only | `rounded-md p-1.5 text-stone-400 hover:bg-stone-200/60 hover:text-stone-700` + `aria-label` | Show/hide password, refresh |
+| Icon-only | `inline-flex h-10 w-10 items-center justify-center rounded-md text-stone-400 hover:bg-stone-200/60 hover:text-stone-700` + `aria-label` (40 × 40 px hit area, 18 px icon; see 7) | Show/hide password, refresh |
 
 All buttons: `focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900 focus-visible:ring-offset-2`.
 Loading: disable the button and swap the label for `<SpinnerIcon /> Signing in...` (present tense + "...").
@@ -162,7 +162,7 @@ Success and info alerts use the same shape with the reserved colors from 2.1.
 `inline-flex items-center gap-4 rounded-xl border border-stone-200 bg-stone-50 px-5 py-4`, an icon tile (`h-11 w-11 rounded-lg bg-stone-900 text-white`), an overline label and a `text-2xl font-bold tabular-nums` value, optional dashed divider `border-l border-dashed border-stone-300`. This is the base for the ticket on `/my-ticket` and the current-entry card on `/operator`.
 
 ### 4.7 Header (signed-in pages)
-White bar, `border-b border-stone-200 px-6 py-3`: small brand mark + product name left; display name, role badge (`rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-600`) and a secondary Logout button right. Keeps `data-testid="current-user"`.
+White bar, `border-b border-stone-200 px-4 py-3 sm:px-6`: small brand mark + product name left; display name, role badge (`rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-600`) and a secondary Logout button right. Keeps `data-testid="current-user"`. Below `sm` the product name is hidden (the brand link keeps `aria-label`), the display name truncates (`min-w-0 truncate`), and the icon, badge and Logout do not shrink (`shrink-0`). The bar must fit a 360 px layout width: a 375 px viewport minus a desktop scrollbar (#40).
 
 ## 5. Screen states (every screen)
 
@@ -222,3 +222,4 @@ Templates, not final designs; feature contracts define the content. All use page
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 1.0 | 2026-11-06 | WATHITx | Initial spec extracted from the redesigned login page (Issue #7) |
+| 1.1 | 2026-11-20 | WATHITx | Lab 6 UAT fixes: the icon-only button example in 4.4 is now 40 × 40 px, to match the touch-target rule in 7 (#39). The header in 4.7 must fit a 360 px layout width (#40). |
