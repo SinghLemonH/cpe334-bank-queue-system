@@ -1,0 +1,99 @@
+RED run for issues #39 and #40 (Lab 6 Part D)
+Date: 2026-11-20 15:28    
+Tested commit (unfixed code): b0e0698bf763f2f12fee84123efba7b83b9c989c (Lab5-staging; same app source as deployed e6fdff0)
+Command: cd apps/web && npx playwright test e2e/lab6-mobile-layout.spec.ts  (local Postgres, seeded demo data, Desktop Chrome headless)
+Result: 3 failed, 4 passed
+----
+
+Running 7 tests using 1 worker
+
+  x  1 [chromium] › lab6-mobile-layout.spec.ts:34:5 › BUG-39 / issue #39: password visibility toggle is at least 40x40 px in both states (UI spec §7) (1.5s)
+  x  2 [chromium] › lab6-mobile-layout.spec.ts:59:9 › BUG-40 / issue #40: /my-ticket as customer1 has no horizontal scroll and Logout is fully visible at 360px (UI spec §7) (5.0s)
+  x  3 [chromium] › lab6-mobile-layout.spec.ts:59:9 › BUG-40 / issue #40: /queues as customer1 has no horizontal scroll and Logout is fully visible at 360px (UI spec §7) (2.2s)
+  ok 4 [chromium] › lab6-mobile-layout.spec.ts:59:9 › BUG-40 / issue #40: /operator as teller1 has no horizontal scroll and Logout is fully visible at 360px (UI spec §7) (3.8s)
+  ok 5 [chromium] › lab6-mobile-layout.spec.ts:59:9 › BUG-40 / issue #40: /my-ticket as customer1 has no horizontal scroll and Logout is fully visible at 375px (UI spec §7) (2.1s)
+  ok 6 [chromium] › lab6-mobile-layout.spec.ts:59:9 › BUG-40 / issue #40: /queues as customer1 has no horizontal scroll and Logout is fully visible at 375px (UI spec §7) (2.0s)
+  ok 7 [chromium] › lab6-mobile-layout.spec.ts:59:9 › BUG-40 / issue #40: /operator as teller1 has no horizontal scroll and Logout is fully visible at 375px (UI spec §7) (2.1s)
+
+
+  1) [chromium] › lab6-mobile-layout.spec.ts:34:5 › BUG-39 / issue #39: password visibility toggle is at least 40x40 px in both states (UI spec §7) 
+
+    Error: expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 40
+    Received:    30
+
+      40 |   let box = await toggle.boundingBox();
+      41 |   expect(box, 'toggle is rendered').not.toBeNull();
+    > 42 |   expect(box!.height).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
+         |                       ^
+      43 |   expect(box!.width).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
+      44 |
+      45 |   await toggle.click();
+        at D:\CPE334\bankQueue\cpe334-bank-queue-system\apps\web\e2e\lab6-mobile-layout.spec.ts:42:23
+
+    attachment #1: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\lab6-mobile-layout-BUG-39--e5d12--in-both-states-UI-spec-§7--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\lab6-mobile-layout-BUG-39--e5d12--in-both-states-UI-spec-§7--chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium] › lab6-mobile-layout.spec.ts:59:9 › BUG-40 / issue #40: /my-ticket as customer1 has no horizontal scroll and Logout is fully visible at 360px (UI spec §7) 
+
+    Error: page scrollWidth 361 must not exceed clientWidth 360
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 360
+    Received:    361
+
+      66 |
+      67 |       const m = await horizontalOverflow(page);
+    > 68 |       expect(m.scrollWidth, `page scrollWidth ${m.scrollWidth} must not exceed clientWidth ${m.clientWidth}`).toBeLessThanOrEqual(m.clientWidth);
+         |                                                                                                               ^
+      69 |       expect(m.logoutRight, 'Logout right edge must be inside the viewport').not.toBeNull();
+      70 |       expect(m.logoutRight!).toBeLessThanOrEqual(m.clientWidth);
+      71 |     });
+        at D:\CPE334\bankQueue\cpe334-bank-queue-system\apps\web\e2e\lab6-mobile-layout.spec.ts:68:111
+
+    attachment #1: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\lab6-mobile-layout-BUG-40--8cd36-isible-at-360px-UI-spec-§7--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\lab6-mobile-layout-BUG-40--8cd36-isible-at-360px-UI-spec-§7--chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium] › lab6-mobile-layout.spec.ts:59:9 › BUG-40 / issue #40: /queues as customer1 has no horizontal scroll and Logout is fully visible at 360px (UI spec §7) 
+
+    Error: page scrollWidth 361 must not exceed clientWidth 360
+
+    expect(received).toBeLessThanOrEqual(expected)
+
+    Expected: <= 360
+    Received:    361
+
+      66 |
+      67 |       const m = await horizontalOverflow(page);
+    > 68 |       expect(m.scrollWidth, `page scrollWidth ${m.scrollWidth} must not exceed clientWidth ${m.clientWidth}`).toBeLessThanOrEqual(m.clientWidth);
+         |                                                                                                               ^
+      69 |       expect(m.logoutRight, 'Logout right edge must be inside the viewport').not.toBeNull();
+      70 |       expect(m.logoutRight!).toBeLessThanOrEqual(m.clientWidth);
+      71 |     });
+        at D:\CPE334\bankQueue\cpe334-bank-queue-system\apps\web\e2e\lab6-mobile-layout.spec.ts:68:111
+
+    attachment #1: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\lab6-mobile-layout-BUG-40--21ae5-isible-at-360px-UI-spec-§7--chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\lab6-mobile-layout-BUG-40--21ae5-isible-at-360px-UI-spec-§7--chromium\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [chromium] › lab6-mobile-layout.spec.ts:34:5 › BUG-39 / issue #39: password visibility toggle is at least 40x40 px in both states (UI spec §7) 
+    [chromium] › lab6-mobile-layout.spec.ts:59:9 › BUG-40 / issue #40: /my-ticket as customer1 has no horizontal scroll and Logout is fully visible at 360px (UI spec §7) 
+    [chromium] › lab6-mobile-layout.spec.ts:59:9 › BUG-40 / issue #40: /queues as customer1 has no horizontal scroll and Logout is fully visible at 360px (UI spec §7) 
+  4 passed (49.1s)
