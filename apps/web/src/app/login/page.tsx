@@ -150,7 +150,7 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`${inputClass} pr-11`}
+                    className={`${inputClass} pr-12`}
                   />
                   <button
                     type="button"
@@ -158,7 +158,7 @@ export default function LoginPage() {
                     aria-label={showPassword ? 'Hide characters' : 'Show characters'}
                     aria-controls="password"
                     aria-pressed={showPassword}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-stone-400 hover:bg-stone-200/60 hover:text-stone-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
+                    className="absolute right-1 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md text-stone-400 hover:bg-stone-200/60 hover:text-stone-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-stone-900"
                   >
                     {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
                   </button>
