@@ -3,7 +3,7 @@ import { DataSource, EntityManager } from 'typeorm';
 import { CLOCK_TOKEN, IClock } from '../common/clock';
 import { DuplicateActiveEntryError, NotFoundError, QueueClosedError } from '../common/errors';
 import { formatDisplayNumber } from '../domain/display-number';
-import { peopleAheadValue } from '../domain/queue-entry';
+import { DUPLICATE_ACTIVE_ENTRY_MESSAGE, peopleAheadValue } from '../domain/queue-entry';
 import { mapPgError } from '../infrastructure/pg-errors';
 
 export interface QueueSummary {
@@ -174,17 +174,24 @@ export class QueueService {
     }
 
     const queueDate = this.clock.today();
+
+    // BR-02 v2 (Lab 7 CR-01): one active entry per customer per day across ALL queues.
+    // The per-queue unique index cannot see a join to another queue, so two joins from the
+    // same customer on the same day are serialized with a transaction-scoped advisory lock.
+    // Joins from different customers take different locks and still run in parallel (TEST-14).
+    await manager.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`join:${customerId}:${queueDate}`]);
+
     const active: Array<{ id: string }> = await manager.query(
       `
       SELECT id FROM queue_entries
-      WHERE queue_id = $1 AND queue_date = $2 AND customer_id = $3
+      WHERE customer_id = $1 AND queue_date = $2
         AND status IN ('WAITING', 'CALLED', 'SERVING')
       LIMIT 1
       `,
-      [queue.id, queueDate, customerId],
+      [customerId, queueDate],
     );
     if (active.length > 0) {
-      throw new DuplicateActiveEntryError('You already have an active ticket in this queue today.');
+      throw new DuplicateActiveEntryError(DUPLICATE_ACTIVE_ENTRY_MESSAGE);
     }
 
     const counters: Array<{ last_seq: number | string }> = await manager.query(
