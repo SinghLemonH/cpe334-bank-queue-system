@@ -25,12 +25,14 @@ export async function runSeed(): Promise<void> {
       { code: 'O', name: 'Account Opening' },
     ];
 
+    // New queues start open. Re-running the seed (the deploy job does on every release) keeps
+    // each existing queue's is_open, so a queue an operator closed stays closed (F-08, NFR-04).
     for (const q of queues) {
       await queryRunner.query(
         `
         INSERT INTO queues (code, name, is_open)
         VALUES ($1, $2, true)
-        ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, is_open = true;
+        ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
       `,
         [q.code, q.name],
       );
