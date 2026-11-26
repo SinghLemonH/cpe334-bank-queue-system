@@ -60,30 +60,23 @@ describe('F-07 Counters (integration)', () => {
     );
 
     // FX2: counters K1 "Counter 1", K2 "Counter 2" on D, KL "Counter 3" on L
-    try {
-      const dQueue = await db.query(`SELECT id FROM queues WHERE code = 'D'`);
-      const lQueue = await db.query(`SELECT id FROM queues WHERE code = 'L'`);
-      const k1Rows = await db.query(
-        `INSERT INTO counters (queue_id, label) VALUES ($1, 'Counter 1') RETURNING id`,
-        [dQueue[0].id],
-      );
-      counters['K1'] = k1Rows[0].id;
-      const k2Rows = await db.query(
-        `INSERT INTO counters (queue_id, label) VALUES ($1, 'Counter 2') RETURNING id`,
-        [dQueue[0].id],
-      );
-      counters['K2'] = k2Rows[0].id;
-      const klRows = await db.query(
-        `INSERT INTO counters (queue_id, label) VALUES ($1, 'Counter 3') RETURNING id`,
-        [lQueue[0].id],
-      );
-      counters['KL'] = klRows[0].id;
-    } catch {
-      // Table counters does not exist yet (pre-implementation / red phase)
-      counters['K1'] = '11111111-1111-4111-8111-111111111111';
-      counters['K2'] = '22222222-2222-4222-8222-222222222222';
-      counters['KL'] = '33333333-3333-4333-8333-333333333333';
-    }
+    const dQueue = await db.query(`SELECT id FROM queues WHERE code = 'D'`);
+    const lQueue = await db.query(`SELECT id FROM queues WHERE code = 'L'`);
+    const k1Rows = await db.query(
+      `INSERT INTO counters (queue_id, label) VALUES ($1, 'Counter 1') RETURNING id`,
+      [dQueue[0].id],
+    );
+    counters['K1'] = k1Rows[0].id;
+    const k2Rows = await db.query(
+      `INSERT INTO counters (queue_id, label) VALUES ($1, 'Counter 2') RETURNING id`,
+      [dQueue[0].id],
+    );
+    counters['K2'] = k2Rows[0].id;
+    const klRows = await db.query(
+      `INSERT INTO counters (queue_id, label) VALUES ($1, 'Counter 3') RETURNING id`,
+      [lQueue[0].id],
+    );
+    counters['KL'] = klRows[0].id;
   });
 
   afterAll(async () => {
@@ -147,6 +140,10 @@ describe('F-07 Counters (integration)', () => {
     return rows[0];
   }
 
+  function get(sid: string, path: string) {
+    return request(server()).get(path).set('Cookie', `sid=${sid}`);
+  }
+
   function post(sid: string, path: string) {
     return request(server()).post(path).set('Cookie', `sid=${sid}`);
   }
@@ -163,6 +160,30 @@ describe('F-07 Counters (integration)', () => {
     expect(Object.keys(res.body)).toEqual(['error']);
     expect(res.body.error.code).toBe(code);
   }
+
+  // ---------------------------------------------------------------------------
+  // TEST-42 / AC-42: call-next with counterId sets counter and returns counterLabel
+  // ---------------------------------------------------------------------------
+
+  it('TEST-42 / AC-42: call-next with counterId sets counter and returns counterLabel, persisted in DB and GET', async () => {
+    const e1 = await insertEntry('D', 1, 'c1');
+    const sidTeller = await login('teller1');
+    const sidCustomer = await login('c1');
+
+    const res = await callNext(sidTeller, 'D', { counterId: counters.K1 });
+    expect(res.status).toBe(200);
+    expect(res.body.counterLabel).toBe('Counter 1');
+    expect(res.body.status).toBe('CALLED');
+
+    // Customer GET /api/entries/:id shows same counterLabel
+    const getRes = await get(sidCustomer, `/api/entries/${e1}`);
+    expect(getRes.status).toBe(200);
+    expect(getRes.body.counterLabel).toBe('Counter 1');
+
+    // DB has counter_id
+    const dbRow = await db.query(`SELECT counter_id FROM queue_entries WHERE id = $1`, [e1]);
+    expect(dbRow[0].counter_id).toBe(counters.K1);
+  });
 
   // ---------------------------------------------------------------------------
   // TEST-43 / AC-43 (TDD): busy counter returns 409 COUNTER_BUSY
@@ -203,5 +224,65 @@ describe('F-07 Counters (integration)', () => {
     const res4 = await callNext(sid2, 'D', { counterId: counters.K1 });
     expect(res4.status).toBe(200);
     expect(res4.body.counterLabel).toBe('Counter 1');
+  });
+
+  // ---------------------------------------------------------------------------
+  // TEST-44 / AC-44: counter validation
+  // ---------------------------------------------------------------------------
+
+  it('TEST-44 / AC-44: counter of another queue or unknown is 404; invalid body is 400', async () => {
+    const e1 = await insertEntry('D', 1, 'c1');
+    const before = await row(e1);
+    const sid = await login('teller1');
+
+    // Counter KL belongs to queue L, not D -> 404 NOT_FOUND
+    expectError(await callNext(sid, 'D', { counterId: counters.KL }), 404, 'NOT_FOUND');
+    // Random UUID -> 404 NOT_FOUND
+    expectError(await callNext(sid, 'D', { counterId: '00000000-0000-4000-8000-000000000000' }), 404, 'NOT_FOUND');
+    // Non-UUID -> 400 VALIDATION_FAILED
+    expectError(await callNext(sid, 'D', { counterId: 'abc' }), 400, 'VALIDATION_FAILED');
+    // Extra field -> 400 VALIDATION_FAILED
+    expectError(await callNext(sid, 'D', { counterId: counters.K1, extra: 1 }), 400, 'VALIDATION_FAILED');
+
+    // Nothing called
+    expect(await row(e1)).toEqual(before);
+  });
+
+  // ---------------------------------------------------------------------------
+  // TEST-45 / AC-45: call-next without body works (Sprint 1 regression)
+  // ---------------------------------------------------------------------------
+
+  it('TEST-45 / AC-45: call-next without body still returns CALLED with counterLabel: null', async () => {
+    await insertEntry('D', 1, 'c1');
+    const sid = await login('teller1');
+
+    const res = await callNext(sid, 'D');
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('CALLED');
+    expect(res.body.counterLabel).toBeNull();
+  });
+
+  // ---------------------------------------------------------------------------
+  // TEST-46 / AC-46: GET /api/queues/:code/counters list
+  // ---------------------------------------------------------------------------
+
+  it('TEST-46 / AC-46: counter list permissions and ordering', async () => {
+    const sidTeller = await login('teller1');
+    const sidLoan = await login('loanofficer1');
+    const sidCustomer = await login('c1');
+
+    // Assigned operator on D -> 200 with K1 and K2 only, ordered by label
+    const res = await get(sidTeller, '/api/queues/D/counters');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([
+      { id: counters.K1, label: 'Counter 1' },
+      { id: counters.K2, label: 'Counter 2' },
+    ]);
+
+    // Unassigned operator on D -> 403 FORBIDDEN
+    expectError(await get(sidLoan, '/api/queues/D/counters'), 403, 'FORBIDDEN');
+
+    // Customer on D -> 403 FORBIDDEN
+    expectError(await get(sidCustomer, '/api/queues/D/counters'), 403, 'FORBIDDEN');
   });
 });

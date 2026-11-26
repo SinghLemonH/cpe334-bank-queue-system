@@ -1,0 +1,14 @@
+$ npm --workspace=apps/api test -- -t "TEST-43"
+
+> @queue-system/api@0.1.0 test
+> jest --config jest.config.ts --runInBand -t TEST-43
+
+PASS test/integration/f07-counters.spec.ts (6.919 s)
+  F-07 Counters (integration)
+    ✓ TEST-43 / AC-43: while teller1 holds a counter (CALLED or SERVING), teller2 calling with the same counter gets 409 COUNTER_BUSY (650 ms)
+
+Test Suites: 13 skipped, 1 passed, 1 of 14 total
+Tests:       109 skipped, 1 passed, 110 total
+Snapshots:   0 total
+Time:        24.264 s
+Ran all test suites with tests matching "TEST-43".

@@ -20,6 +20,7 @@ export interface EntryView {
   displayNumber: string;
   status: string;
   lane: string;
+  counterLabel: string | null;
   peopleAhead: number | null;
   joinedAt: string;
   calledAt: string | null;
@@ -33,6 +34,7 @@ export interface EntryRow {
   display_number: string;
   status: string;
   lane: string;
+  counter_label?: string | null;
   joined_at: Date | string;
   called_at: Date | string | null;
   started_at: Date | string | null;
@@ -48,6 +50,7 @@ export const ENTRY_SELECT = `
          e.display_number,
          e.status,
          e.lane,
+         c.label AS counter_label,
          e.joined_at,
          e.called_at,
          e.started_at,
@@ -65,6 +68,7 @@ export const ENTRY_SELECT = `
          END AS people_ahead
   FROM queue_entries e
   JOIN queues q ON q.id = e.queue_id
+  LEFT JOIN counters c ON c.id = e.counter_id
 `;
 
 function iso(value: Date | string | null): string | null {
@@ -80,6 +84,7 @@ export function toEntry(row: EntryRow): EntryView {
     displayNumber: row.display_number,
     status: row.status,
     lane: row.lane,
+    counterLabel: row.counter_label ?? null,
     peopleAhead: peopleAheadValue(row.status, ahead ?? 0),
     joinedAt: iso(row.joined_at) as string,
     calledAt: iso(row.called_at),

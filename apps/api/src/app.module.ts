@@ -6,6 +6,7 @@ import { VersionController } from './presentation/version.controller';
 import { ClockModule } from './common/clock.module';
 import { getDataSourceOptions } from './infrastructure/data-source';
 import { AuthModule } from './modules/auth.module';
+import { CounterModule } from './modules/counter.module';
 import { QueueModule } from './modules/queue.module';
 import { ServiceDeskModule } from './modules/service-desk.module';
 
@@ -22,6 +23,7 @@ import { ServiceDeskModule } from './modules/service-desk.module';
     }),
     ClockModule,
     AuthModule,
+    CounterModule,
     QueueModule,
     ServiceDeskModule,
   ],

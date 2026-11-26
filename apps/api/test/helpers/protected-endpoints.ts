@@ -5,9 +5,9 @@
  * `:id` is replaced with a random valid UUID by the test.
  */
 export interface ProtectedEndpoint {
-  method: 'get' | 'post';
+  method: 'get' | 'post' | 'patch';
   path: string;
-  feature: 'F-01' | 'F-02' | 'F-03';
+  feature: 'F-01' | 'F-02' | 'F-03' | 'F-04' | 'F-05' | 'F-06' | 'F-07' | 'F-08' | 'F-09';
 }
 
 export const PROTECTED_ENDPOINTS: ProtectedEndpoint[] = [
@@ -25,4 +25,6 @@ export const PROTECTED_ENDPOINTS: ProtectedEndpoint[] = [
   { method: 'post', path: '/api/queues/D/call-next', feature: 'F-03' },
   { method: 'post', path: '/api/entries/:id/start', feature: 'F-03' },
   { method: 'post', path: '/api/entries/:id/complete', feature: 'F-03' },
+  // F-07 Counters
+  { method: 'get', path: '/api/queues/D/counters', feature: 'F-07' },
 ];
