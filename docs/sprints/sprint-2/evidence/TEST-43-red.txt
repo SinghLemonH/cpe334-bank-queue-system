@@ -1,0 +1,30 @@
+$ npm --workspace=apps/api test -- -t "TEST-43"
+
+> @queue-system/api@0.1.0 test
+> jest --config jest.config.ts --runInBand -t TEST-43
+
+FAIL test/integration/f07-counters.spec.ts (6.717 s)
+  ● F-07 Counters (integration) › TEST-43 / AC-43: while teller1 holds a counter (CALLED or SERVING), teller2 calling with the same counter gets 409 COUNTER_BUSY
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 409
+    Received: 200
+
+      160 |
+      161 |   function expectError(res: request.Response, status: number, code: string) {
+    > 162 |     expect(res.status).toBe(status);
+          |                        ^
+      163 |     expect(Object.keys(res.body)).toEqual(['error']);
+      164 |     expect(res.body.error.code).toBe(code);
+      165 |   }
+
+      at expectError (test/integration/f07-counters.spec.ts:162:24)
+      at Object.<anonymous> (test/integration/f07-counters.spec.ts:186:5)
+
+
+Test Suites: 1 failed, 13 skipped, 1 of 14 total
+Tests:       1 failed, 104 skipped, 105 total
+Snapshots:   0 total
+Time:        21.086 s
+Ran all test suites with tests matching "TEST-43".
