@@ -1,6 +1,6 @@
 # System-Level SDS: Bank Branch Queue System
 
-Version 1.0 (5 Nov 2026). Requirements are defined in `docs/srs.md`. Feature allocation is in `docs/features.md`. Detailed endpoint, screen and test contracts per feature are written in `docs/sprints/sprint-N/` before each feature is implemented; this document defines the conventions they follow.
+Version 1.1 (26 Nov 2026; 1.0 5 Nov 2026). 1.1: Lab 7 CR-01 join step 2 (BR-02 v2). Requirements are defined in `docs/srs.md`. Feature allocation is in `docs/features.md`. Detailed endpoint, screen and test contracts per feature are written in `docs/sprints/sprint-N/` before each feature is implemented; this document defines the conventions they follow.
 
 ---
 
@@ -168,7 +168,7 @@ Constraints on `queue_entries`:
 | Constraint | Rule enforced |
 |---|---|
 | `uq_entry_number` unique on (queue, date, seq) | BR-01 unique numbers per queue per day |
-| `uq_active_entry_per_customer` unique on (queue, date, customer) where status is WAITING, CALLED or SERVING | BR-02 one active entry per queue per day |
+| `uq_active_entry_per_customer` unique on (queue, date, customer) where status is WAITING, CALLED or SERVING | BR-02 same-queue safety net (the cross-queue rule of BR-02 v2 is enforced by the advisory lock + pre-check) |
 | `uq_operator_active_entry` unique on (operator, date) where status is CALLED or SERVING | BR-06 one held entry per operator |
 | `ck_operator_required`: status other than WAITING, CANCELLED, EXPIRED requires `operator_id` | An entry past WAITING always has an owner (BR-07) |
 | `status` check list and `lane` check list | Only known values; all seven statuses and both lanes exist from migration 001 (D-15) |
@@ -213,7 +213,7 @@ Every other pair is rejected with `INVALID_TRANSITION` and changes no data (BR-0
 
 **Join (one transaction).**
 1. Load the queue by code (404 if missing). If closed, 409 `QUEUE_CLOSED`.
-2. Pre-check for an active entry today in this queue: 409 `DUPLICATE_ACTIVE_ENTRY`.
+2. **(v1.1)** Take a transaction-scoped advisory lock on (customer, queue date), then pre-check for an active entry today in **any** queue: 409 `DUPLICATE_ACTIVE_ENTRY`. *(v1.0: in this queue only.)*
 3. Increment the daily counter with a single atomic `INSERT ... ON CONFLICT DO UPDATE ... RETURNING last_seq`.
 4. Insert the entry (lane REGULAR in Sprint 1; computed from the date of birth in Sprint 3). `queue_date` and `joined_at` come from the Clock.
 5. If a race triggers `23505` on `uq_active_entry_per_customer`, map it to `DUPLICATE_ACTIVE_ENTRY`. The rollback also undoes the counter increment, so numbers have no gaps.

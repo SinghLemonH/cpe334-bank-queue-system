@@ -127,7 +127,7 @@ IDs are grouped by sprint, so numbering is not sequential in the table. Allocati
 | ID | Rule | Enforced by | Sprint |
 |---|---|---|---|
 | BR-01 | Display numbers are unique per queue per day, even under concurrent joins. | DB unique constraint `uq_entry_number`; atomic daily counter | 1 |
-| BR-02 | A customer has at most one active (WAITING, CALLED, SERVING) entry per queue per day. A customer may hold active entries in different queues at the same time. | Service pre-check; partial unique index `uq_active_entry_per_customer` | 1 |
+| BR-02 | **(v2, Lab 7 CR-01)** A customer has at most one active (WAITING, CALLED, SERVING) entry per day **across all queues**. *(v1: at most one per queue per day; a customer may hold active entries in different queues at the same time.)* | Per-customer advisory lock + service pre-check; partial unique index `uq_active_entry_per_customer` (per queue) | 1 (changed in Lab 7) |
 | BR-03 | Call-next selects the WAITING entry with the lowest sequence in the queue for today (FIFO in Sprint 1). | Ordering policy plus ordered query | 1 |
 | BR-04 | Only transitions in the state machine (D-04) are allowed. A rejected transition changes no data. | Domain transition table; conditional update | 1 |
 | BR-05 | Operators act only on queues assigned to them. | Service check against `operator_queue_assignment` | 1 |
@@ -192,7 +192,7 @@ IDs are grouped by sprint, so numbering is not sequential in the table. Allocati
 |---|---|---|---|
 | D-01 | Product | Sprint 1 ordering is FIFO by `seq` within one queue per day. Display number is queue code plus sequence padded to 3 digits. | Simple, deterministic ordering (BR-03). |
 | D-02 | Product | One queue per service type: D, L, O. Operators act only on queues in `operator_queue_assignment`. Several operators may share a queue. | Models branch service desks (BR-05). |
-| D-03 | Product | At most 1 active entry per queue per day; a customer may hold active entries in different queues at once. | Prevents ticket hoarding but allows legitimate multi-service visits (BR-02). |
+| D-03 | Product | **(v2)** At most 1 active entry per customer per day across all queues. *(v1: per queue; different queues at once allowed.)* | v2 reason: tickets in two queues at once are called at two counters together and one counter waits for a no-show (Lab 7 CR-01). |
 | D-04 | Product | State machine. Sprint 1: WAITING, CALLED, SERVING, COMPLETED. Sprint 2 adds WAITING/CALLED to CANCELLED (customer), CALLED to NO_SHOW (operator), WAITING/CALLED to EXPIRED (end of day). | Defines BR-04 completely. |
 | D-05 | Product | An operator holds at most 1 CALLED/SERVING entry per day. Call-next is rejected while one is outstanding. | BR-06. |
 | D-06 | Product | `queue_date` is computed in the application in `Asia/Bangkok`. | Numbering resets at branch-local midnight regardless of server time zone (BR-10). |
@@ -241,3 +241,4 @@ Working defaults are used until the question is answered. Answers will be record
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 5 Nov 2026 | Initial baseline for Deliverable 1. No approved scope changes yet. |
+| 1.1 | 26 Nov 2026 | Lab 7 CR-01: BR-02 and D-03 changed from one active entry per queue to one per customer per day across all queues. |
