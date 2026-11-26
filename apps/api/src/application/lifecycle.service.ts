@@ -8,7 +8,7 @@ import {
   NotFoundError,
   QueueNotAssignedError,
 } from '../common/errors';
-import { nextStatus } from '../domain/entry-status';
+import { allowedFrom, nextStatus } from '../domain/entry-status';
 import { isNoShowAllowed, parseGraceMinutes } from '../domain/no-show-rule';
 import { EntryStatus } from '../domain/queue-entry';
 import { ENTRY_SELECT, EntryRow, EntryView, QueueSummary, toEntry, UUID_RE } from './queue.service';
@@ -39,6 +39,29 @@ export class LifecycleService {
     private readonly dataSource: DataSource,
     @Inject(CLOCK_TOKEN) private readonly clock: IClock,
   ) {}
+
+  /** F-04: the owner cancels their own WAITING or CALLED entry (BR-11, D-07, D-17). */
+  async cancel(customerId: string, id: string): Promise<EntryView> {
+    if (!UUID_RE.test(id)) throw new NotFoundError('This ticket does not exist.');
+    const rows: Array<{ status: EntryStatus }> = await this.dataSource.query(
+      `SELECT status FROM queue_entries WHERE id = $1 AND customer_id = $2`,
+      [id, customerId],
+    );
+    // Another customer's entry is indistinguishable from a missing one (D-07).
+    if (!rows[0]) throw new NotFoundError('This ticket does not exist.');
+    const to = nextStatus(rows[0].status, 'cancel');
+
+    const result = await this.dataSource.query(
+      `UPDATE queue_entries SET status = $3, ended_at = $4
+       WHERE id = $1 AND customer_id = $2 AND status = ANY($5::text[])
+       RETURNING id`,
+      [id, customerId, to, this.clock.now(), allowedFrom('cancel')],
+    );
+    if (returnedRows(result).length === 0) {
+      throw new InvalidTransitionError('This ticket can no longer be cancelled. The page has been refreshed.');
+    }
+    return this.readEntry(this.dataSource.manager, id);
+  }
 
   /** F-05: CALLED -> NO_SHOW by the calling operator after the grace period (BR-07, BR-12). */
   async noShow(operatorId: string, id: string): Promise<EntryView> {

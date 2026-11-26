@@ -26,6 +26,8 @@ export const PROTECTED_ENDPOINTS: ProtectedEndpoint[] = [
   { method: 'post', path: '/api/queues/D/call-next', feature: 'F-03' },
   { method: 'post', path: '/api/entries/:id/start', feature: 'F-03' },
   { method: 'post', path: '/api/entries/:id/complete', feature: 'F-03' },
+  // F-04 Customer cancel (Sprint 2)
+  { method: 'post', path: '/api/entries/:id/cancel', feature: 'F-04' },
   // F-05 No-show (Sprint 2)
   { method: 'post', path: '/api/entries/:id/no-show', feature: 'F-05' },
 ];

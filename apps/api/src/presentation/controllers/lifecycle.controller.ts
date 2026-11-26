@@ -13,6 +13,14 @@ import { SessionAuthGuard } from '../guards/session-auth.guard';
 export class LifecycleController {
   constructor(private readonly lifecycle: LifecycleService) {}
 
+  /** F-04: POST /api/entries/:id/cancel (owner customer; another customer's entry is 404). */
+  @Post('entries/:id/cancel')
+  @HttpCode(200)
+  @Roles('CUSTOMER')
+  cancel(@CurrentUser() user: CurrentUserShape, @Param('id') id: string): Promise<EntryView> {
+    return this.lifecycle.cancel(user.id, id);
+  }
+
   /** F-05: POST /api/entries/:id/no-show (calling operator, after the grace period). */
   @Post('entries/:id/no-show')
   @HttpCode(200)
