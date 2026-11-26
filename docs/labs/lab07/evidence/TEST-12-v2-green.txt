@@ -1,0 +1,35 @@
+# Lab 7 CR-01 GREEN evidence (same TEST-12 v2 tests as the red run)
+# Run at: 2026-11-26 14:08:20 +0700
+# Tested commit: 88baac595dc19a7a043afe39cc706989313d0050
+# Node: v24.14.0  npm: 11.9.0
+# Command: cd apps/api && npx jest --config jest.config.ts --runInBand --ci test/integration/f02-join-queue.spec.ts
+
+(node:26884) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 listening listeners added to [Server]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:26884) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 error listeners added to [Server]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(node:26884) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 close listeners added to [Server]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+PASS test/integration/f02-join-queue.spec.ts
+  F-02 Join queue (integration)
+    √ TEST-09 / AC-09: lists queues with today waiting counts for any signed-in user (142 ms)
+    √ TEST-10 / AC-10: customer joins an open queue and the row is stored (63 ms)
+    √ TEST-10 / AC-10: a request body cannot choose the lane or the customer (54 ms)
+    √ TEST-11 / AC-11: rejects second active entry for same customer and queue (74 ms)
+    √ TEST-12 v2 / AC-12: a customer active in D today cannot join L (one active ticket across queues) (67 ms)
+    √ TEST-12 v2 / AC-12: boundary - a CALLED or SERVING entry in D also blocks joining L (96 ms)
+    √ TEST-12 v2 / AC-12: boundary - a COMPLETED entry in D frees the customer to join L (71 ms)
+    √ TEST-12 v2 / AC-12: boundary - yesterday's active entry in D does not block L today (48 ms)
+    √ TEST-12 v2 / AC-12: race - concurrent joins to D and L by one customer give exactly one ticket (56 ms)
+    √ TEST-12 / AC-12: a completed entry frees the queue for another ticket the same day (54 ms)
+    √ TEST-13 / AC-13: a closed queue rejects the join and does not take a number (40 ms)
+    √ TEST-13 / AC-13: an unknown or lower-case queue code is not found (44 ms)
+    √ TEST-14 / AC-14: twenty concurrent joins receive seq 1 through 20 (609 ms)
+    √ TEST-15 / AC-15: numbering restarts at Bangkok midnight and an older active entry does not block (151 ms)
+    √ TEST-16 / AC-16: a customer reads their own entry; someone else's entry stays hidden (109 ms)
+    √ TEST-16 / AC-16: a bad id is not found, and my entries are only today's own tickets (87 ms)
+    √ TEST-17 / AC-17: an operator cannot join a queue or read customer tickets (42 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       17 passed, 17 total
+Snapshots:   0 total
+Time:        4.892 s
+Ran all test suites matching /test\\integration\\f02-join-queue.spec.ts/i.
