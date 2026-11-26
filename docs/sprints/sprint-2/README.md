@@ -3,7 +3,7 @@
 **Status:** Contract set v1 - 2026-11-27 - plan Issue S2-1, branch `docs/sprint-2-3-contracts`
 **Author:** WATHITx (Student B) - **Reviewer:** SinghLemonH (Student A)
 **Sprint goal:** complete the customer and operator lifecycle and the branch-floor experience (F-04, F-05, F-06, F-07, F-08; F-03 contract v2).
-**Baseline:** written against `Lab5-staging` at `faca7fb` (= `main` `cb02438`, tag `v0.3.0-lab7`: Sprint 1 + Labs 5, 6, 7).
+**Baseline:** written against `faca7fb` (`Lab5-staging` head = `main` `cb02438`, tag `v0.3.0-lab7`: Sprint 1 + Labs 5, 6, 7). `sprint-2-staging` was created from this commit (D-25).
 
 > **Issue numbering:** plan IDs are used below. GitHub numbers are added to `docs/sprints/plan.md` when the Issues are created.
 >
@@ -12,7 +12,7 @@
 > | Work | **these contracts** (+ Sprint 3 contracts) | F-07 + F-06 | F-04 + F-05 + F-08 | Sprint 2 release |
 > | Author / Reviewer | B / A | A / B | B / A | B / A |
 
-These files are the contract for Sprint 2. **No implementation commit for F-04..F-08 may land before this PR is merged into `Lab5-staging`.** The merge commit of this PR is the "contract before implementation" evidence for Deliverable 2 Part B.
+These files are the contract for Sprint 2. **No implementation commit for F-04..F-08 may land before this PR is merged into `sprint-2-staging`.** The merge commit of this PR is the "contract before implementation" evidence for Deliverable 2 Part B.
 
 ## 1. Files in this folder
 
@@ -153,7 +153,7 @@ Recorded here first; copied into the SRS decision log (section 10) in plan Issue
 
 | ID | Decision | Reason |
 |---|---|---|
-| D-25 | `Lab5-staging` is the integration branch for Sprints 2 and 3 (replaces `sprint-2-staging` / `sprint-3-staging` in the plan) | CI required check and ruleset are bound to it |
+| D-25 | Sprint 2 integrates on `sprint-2-staging`, created from `faca7fb` (the `Lab5-staging` head, equal to `main`). Sprint 3 integrates on `sprint-3-staging`, created from `main` after the `v0.4.0-sprint2` tag. `Lab5-staging` is kept for lab history only. `ci-docker.yml` runs on pull requests into all three staging branches and `main`; the required-check ruleset is extended to the two sprint branches | Follows the sprint flow in plan.md and system SDS 7 (`sprint-N-staging`); keeps each sprint's integration history separate |
 | D-26 | Release tags `v0.4.0-sprint2`, `v0.5.0-rc1`, `v1.0.0`; annotated tag `v0.1.0-sprint1` created late on `0a2d8fe` | `v0.2.0` / `v0.3.0` are used by Labs 5 and 7; the Sprint 1 tag was never pushed |
 | D-27 | End-of-day expires only **today's** WAITING and CALLED entries; SERVING is untouched | BR-16; never cut off a customer being served |
 | D-28 | Cancel, no-show and expire set `ended_at = clock.now()` | Every terminal status has an end time (used by F-10) |

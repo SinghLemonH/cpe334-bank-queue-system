@@ -5,7 +5,7 @@ Applies to the Sprint 2 feature PRs (S2-2: F-07 + F-06; S2-3: F-04 + F-05 + F-08
 
 ## 1. Feature PR checklist (copy into each Sprint 2 feature PR)
 
-- [ ] The Sprint 2 contracts (S2-1) were merged into `Lab5-staging` before the first implementation commit on the branch; any contract change has a version row and a reason
+- [ ] The Sprint 2 contracts (S2-1) were merged into `sprint-2-staging` before the first implementation commit on the branch; any contract change has a version row and a reason
 - [ ] Every AC of the feature has a test titled with its ID; all automated ones run in CI on this PR and **pass**; manual ones (TEST-41, TEST-54) have a written procedure
 - [ ] TDD item: the failing-test commit comes before the implementation commit; red and green outputs saved in `docs/sprints/sprint-2/evidence/` (S2-3: TEST-38; S2-2: TEST-43)
 - [ ] New protected endpoints are in `protected-endpoints.ts`; 401, 403 and 404 cases are tested
@@ -37,10 +37,10 @@ Applies to the Sprint 2 feature PRs (S2-2: F-07 + F-06; S2-3: F-04 + F-05 + F-08
 ## 2. Sprint 2 release Done (S2-4)
 
 - [ ] F-04..F-08 each meet section 1; AC-31..AC-54 are Passed, or any that are not are disclosed with the reason
-- [ ] On `Lab5-staging`: `npm ci && npm run build && npm test && npm run test:e2e` pass; output saved with `git rev-parse HEAD` and pass/fail/skip counts
+- [ ] On `sprint-2-staging`: `npm ci && npm run build && npm test && npm run test:e2e` pass; output saved with `git rev-parse HEAD` and pass/fail/skip counts
 - [ ] `APP_VERSION` is `0.4.0-sprint2` in `version.controller.ts` and `version.spec.ts`
 - [ ] `docs/sprints/sprint-2/completion.md`: per feature, AC → implementation PR/commit → test → result → release, filled from the actual run
-- [ ] Release PR `Lab5-staging` → `main` reviewed with a specific check and merged with a merge commit (this deploys)
+- [ ] Release PR `sprint-2-staging` → `main` reviewed with a specific check and merged with a merge commit (this deploys)
 - [ ] Annotated tag `v0.4.0-sprint2` on that merge commit; GitHub Release created; the tag is never moved. Late tag `v0.1.0-sprint1` on `0a2d8fe` pushed (D-26)
 - [ ] Deployed `/api/version` reports the tag SHA and `0.4.0-sprint2`
 - [ ] Post-deploy: critical journey works, `/board` opens without login, persistence ticket created (customer3, queue O) and its id recorded for the next redeploy check (NFR-04)
