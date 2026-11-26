@@ -56,7 +56,24 @@ const MESSAGES: Record<string, FriendlyMessage> = {
     en: 'Only the operator who called this ticket can serve it.',
     th: 'เฉพาะพนักงานที่เรียกคิวนี้เท่านั้นที่ให้บริการได้',
   },
+  // F-05 No-show (docs/sprints/sprint-2/README.md 4.3)
+  NO_SHOW_TOO_EARLY: {
+    en: 'Please wait until the grace period has passed before marking no-show.',
+    th: 'กรุณารอให้ครบเวลาก่อนบันทึกว่าลูกค้าไม่มา',
+  },
 };
+
+/** Cancel copy for INVALID_TRANSITION (F-04 contract 4.2). */
+export const CANCEL_TOO_LATE: FriendlyMessage = {
+  en: 'This ticket can no longer be cancelled. The page has been refreshed.',
+  th: 'บัตรคิวนี้ยกเลิกไม่ได้แล้ว ระบบได้รีเฟรชหน้าให้',
+};
+
+/** Same map as messageFor, with the cancel-specific INVALID_TRANSITION sentence. */
+export function messageForCancel(code: string | undefined): FriendlyMessage {
+  if (code === 'INVALID_TRANSITION') return CANCEL_TOO_LATE;
+  return messageFor(code);
+}
 
 /** Service desk copy for FORBIDDEN (F-03 contract 5): the operator is not assigned to the queue. */
 export const DESK_FORBIDDEN: FriendlyMessage = {

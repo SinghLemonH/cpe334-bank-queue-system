@@ -1,0 +1,126 @@
+# TEST-38 + UT-05 RED evidence (F-05 no-show, BR-12)
+# Run at: 2026-11-27 02:05:14 +07:00
+# Tested commit: 290b0213d5d3722f2e44b85c2dabf08b135c4080 (failing tests only; no F-05 implementation)
+# Node: v24.14.0
+# Command: cd apps/api && npx jest --config jest.config.ts --runInBand --ci test/unit/no-show-rule.spec.ts test/integration/f05-no-show.spec.ts
+
+node.exe : FAIL test/integration/f05-no-show.spec.ts (20.675 s)
+At line:1 char:1
++ & "D:\/node.exe" "D:\/node_modules/npm/bin/npx-cli.js" jest --config  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (FAIL test/integ...c.ts (20.675 s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  ● F-05 No-show (integration) › TEST-37 / AC-37: the calling operator marks no-show exactly at the end of the grace 
+period
+
+    expected 200 "OK", got 404 "Not Found"
+
+      41 |     clock.setTime(at(120_000));
+      42 |
+    > 43 |     const res = await noShow(sid, id).expect(200);
+         |                                       ^
+      44 |     expect(res.body.status).toBe('NO_SHOW');
+      45 |     expect(res.body.endedAt).toBe(at(120_000).toISOString());
+      46 |     expect((await fx.row(id)).status).toBe('NO_SHOW');
+
+      at Object.<anonymous> (test/integration/f05-no-show.spec.ts:43:39)
+      ----
+      at Test._assertStatus (../../node_modules/supertest/lib/test.js:404:14)
+      at ../../node_modules/supertest/lib/test.js:460:13
+      at Test._assertFunction (../../node_modules/supertest/lib/test.js:437:13)
+      at Test.assert (../../node_modules/supertest/lib/test.js:302:23)
+      at localAssert (../../node_modules/supertest/lib/test.js:220:38)
+      at Server.<anonymous> (../../node_modules/supertest/lib/test.js:227:13)
+
+  ● F-05 No-show (integration) › TEST-38 / AC-38: rejects no-show 1 second before the grace period ends and leaves the 
+row unchanged
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Object {
+    -   "code": "NO_SHOW_TOO_EARLY",
+    -   "status": 409,
+    +   "code": "NOT_FOUND",
+    +   "status": 404,
+      }
+
+      126 |
+      127 | export function expectError(res: request.Response, status: number, code: string): void {
+    > 128 |   expect({ status: res.status, code: res.body?.error?.code }).toEqual({ status, code });
+          |                                                               ^
+      129 |   expect(Object.keys(res.body)).toEqual(['error']);
+      130 | }
+      131 |
+
+      at expectError (test/helpers/fixture.ts:128:63)
+      at Object.<anonymous> (test/integration/f05-no-show.spec.ts:59:16)
+
+  ● F-05 No-show (integration) › TEST-39 / AC-39: only the calling operator of an assigned queue may mark no-show
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Object {
+    -   "code": "NOT_ENTRY_OWNER",
+    -   "status": 403,
+    +   "code": "NOT_FOUND",
+    +   "status": 404,
+      }
+
+      126 |
+      127 | export function expectError(res: request.Response, status: number, code: string): void {
+    > 128 |   expect({ status: res.status, code: res.body?.error?.code }).toEqual({ status, code });
+          |                                                               ^
+      129 |   expect(Object.keys(res.body)).toEqual(['error']);
+      130 | }
+      131 |
+
+      at expectError (test/helpers/fixture.ts:128:63)
+      at Object.<anonymous> (test/integration/f05-no-show.spec.ts:68:16)
+
+  ● F-05 No-show (integration) › TEST-40 / AC-40: no-show on a WAITING, SERVING or COMPLETED entry returns 409 
+INVALID_TRANSITION
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Object {
+    -   "code": "INVALID_TRANSITION",
+    -   "status": 409,
+    +   "code": "NOT_FOUND",
+    +   "status": 404,
+      }
+
+      126 |
+      127 | export function expectError(res: request.Response, status: number, code: string): void {
+    > 128 |   expect({ status: res.status, code: res.body?.error?.code }).toEqual({ status, code });
+          |                                                               ^
+      129 |   expect(Object.keys(res.body)).toEqual(['error']);
+      130 | }
+      131 |
+
+      at expectError (test/helpers/fixture.ts:128:63)
+      at Object.<anonymous> (test/integration/f05-no-show.spec.ts:90:18)
+
+FAIL test/unit/no-show-rule.spec.ts
+  ● Test suite failed to run
+
+    test/unit/no-show-rule.spec.ts:1:50 - error TS2307: Cannot find 
+module '../../src/domain/no-show-rule' or its corresponding type declarations.
+
+    1 import { isNoShowAllowed, noShowAllowedAt } from '../../src/domain/no-show-rule';
+                                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Test Suites: 2 failed, 2 total
+Tests:       4 failed, 1 passed, 5 total
+Snapshots:   0 total
+Time:        21.464 s
+Ran all test suites matching /test\\unit\\no-show-rule.spec.ts|test\\integration\\f05-no-show.spec.ts/i.
