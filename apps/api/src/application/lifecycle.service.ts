@@ -96,6 +96,71 @@ export class LifecycleService {
     return this.readEntry(this.dataSource.manager, id);
   }
 
+  /** F-08: open or close an assigned queue (BR-09). Idempotent. */
+  async setOpen(operatorId: string, code: string, isOpen: boolean): Promise<QueueSummary> {
+    const queueId = await this.assignedQueueId(this.dataSource.manager, operatorId, code, false);
+    await this.dataSource.query(`UPDATE queues SET is_open = $2 WHERE id = $1`, [queueId, isOpen]);
+    return this.summary(this.dataSource.manager, queueId);
+  }
+
+  /**
+   * F-08: end of day (BR-16, D-27). One transaction: lock the queue row, close the queue, and
+   * expire today's WAITING and CALLED entries. SERVING and earlier-day entries are not touched.
+   */
+  async endDay(operatorId: string, code: string): Promise<EndDayResult> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+    const manager = queryRunner.manager;
+    try {
+      const queueId = await this.assignedQueueId(manager, operatorId, code, true);
+      await manager.query(`UPDATE queues SET is_open = false WHERE id = $1`, [queueId]);
+      const result = await manager.query(
+        `UPDATE queue_entries SET status = 'EXPIRED', ended_at = $3
+         WHERE queue_id = $1 AND queue_date = $2 AND status = ANY($4::text[])
+         RETURNING id`,
+        [queueId, this.clock.today(), this.clock.now(), allowedFrom('expire')],
+      );
+      const queue = await this.summary(manager, queueId);
+      await queryRunner.commitTransaction();
+      return { queue, expiredCount: returnedRows(result).length };
+    } catch (err) {
+      if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /** 404 for an unknown queue code, then 403 FORBIDDEN when the queue is not assigned (BR-05). */
+  private async assignedQueueId(
+    manager: EntityManager,
+    operatorId: string,
+    code: string,
+    lock: boolean,
+  ): Promise<string> {
+    const queues: Array<{ id: string }> = await manager.query(
+      `SELECT id FROM queues WHERE code = $1${lock ? ' FOR UPDATE' : ''}`,
+      [code],
+    );
+    if (!queues[0]) throw new NotFoundError('This queue does not exist.');
+    await this.assertAssigned(manager, operatorId, queues[0].id);
+    return queues[0].id;
+  }
+
+  private async summary(manager: EntityManager, queueId: string): Promise<QueueSummary> {
+    const rows: Array<{ code: string; name: string; is_open: boolean; waiting_count: number | string }> =
+      await manager.query(
+        `SELECT q.code, q.name, q.is_open,
+                (SELECT count(*)::int FROM queue_entries e
+                 WHERE e.queue_id = q.id AND e.queue_date = $2 AND e.status = 'WAITING') AS waiting_count
+         FROM queues q WHERE q.id = $1`,
+        [queueId, this.clock.today()],
+      );
+    const row = rows[0];
+    return { code: row.code, name: row.name, isOpen: row.is_open === true, waitingCount: Number(row.waiting_count) };
+  }
+
   private async assertAssigned(manager: EntityManager, operatorId: string, queueId: string): Promise<void> {
     const assigned: unknown[] = await manager.query(
       `SELECT 1 FROM operator_queue_assignment WHERE operator_id = $1 AND queue_id = $2`,

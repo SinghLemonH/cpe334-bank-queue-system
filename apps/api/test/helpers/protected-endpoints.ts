@@ -30,4 +30,7 @@ export const PROTECTED_ENDPOINTS: ProtectedEndpoint[] = [
   { method: 'post', path: '/api/entries/:id/cancel', feature: 'F-04' },
   // F-05 No-show (Sprint 2)
   { method: 'post', path: '/api/entries/:id/no-show', feature: 'F-05' },
+  // F-08 Queue open/close and end-of-day (Sprint 2)
+  { method: 'patch', path: '/api/queues/D', feature: 'F-08' },
+  { method: 'post', path: '/api/queues/D/end-day', feature: 'F-08' },
 ];

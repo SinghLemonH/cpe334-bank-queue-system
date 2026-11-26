@@ -48,6 +48,12 @@ export class Fixture {
     );
   }
 
+  /** Adds an extra customer to `users` (for tests that need more than c1..c3). */
+  async addCustomer(username: string): Promise<string> {
+    this.users[username] = await this.insertUser(username, 'CUSTOMER');
+    return this.users[username];
+  }
+
   private async insertUser(username: string, role: 'CUSTOMER' | 'OPERATOR'): Promise<string> {
     const rows = await this.db.query(
       `INSERT INTO users (username, password_hash, display_name, role, date_of_birth)
