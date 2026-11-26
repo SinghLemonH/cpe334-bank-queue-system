@@ -1,7 +1,7 @@
 import { InvalidTransitionError } from '../common/errors';
 import { EntryStatus } from './queue-entry';
 
-/** Every status in migration 001 (Sprint 2 adds the transitions into the last three). */
+/** Every status in migration 001. */
 export const ENTRY_STATUSES: readonly EntryStatus[] = [
   'WAITING',
   'CALLED',
@@ -12,24 +12,38 @@ export const ENTRY_STATUSES: readonly EntryStatus[] = [
   'EXPIRED',
 ];
 
-/** Operator actions in Sprint 1 (F-03 contract table 1.1). */
-export type EntryAction = 'call' | 'start' | 'complete';
-export const ENTRY_ACTIONS: readonly EntryAction[] = ['call', 'start', 'complete'];
+/** Operator service-desk actions from Sprint 1 (F-03 contract table 1.1, UT-01). */
+export type OperatorAction = 'call' | 'start' | 'complete';
+/** Sprint 2 transitions into terminal statuses (sprint-2 README 3.1, UT-06). */
+export type LifecycleAction = 'cancel' | 'noShow' | 'expire';
+export type EntryAction = OperatorAction | LifecycleAction;
+
+export const ENTRY_ACTIONS: readonly OperatorAction[] = ['call', 'start', 'complete'];
+export const LIFECYCLE_ACTIONS: readonly LifecycleAction[] = ['cancel', 'noShow', 'expire'];
+export const ALL_ENTRY_ACTIONS: readonly EntryAction[] = [...ENTRY_ACTIONS, ...LIFECYCLE_ACTIONS];
 
 /** The only allowed (from, action) pairs. Everything else is 409 INVALID_TRANSITION (BR-04). */
-const TRANSITIONS: Record<EntryAction, { from: EntryStatus; to: EntryStatus }> = {
-  call: { from: 'WAITING', to: 'CALLED' },
-  start: { from: 'CALLED', to: 'SERVING' },
-  complete: { from: 'SERVING', to: 'COMPLETED' },
+const TRANSITIONS: Record<EntryAction, { from: readonly EntryStatus[]; to: EntryStatus }> = {
+  call: { from: ['WAITING'], to: 'CALLED' },
+  start: { from: ['CALLED'], to: 'SERVING' },
+  complete: { from: ['SERVING'], to: 'COMPLETED' },
+  cancel: { from: ['WAITING', 'CALLED'], to: 'CANCELLED' },
+  noShow: { from: ['CALLED'], to: 'NO_SHOW' },
+  expire: { from: ['WAITING', 'CALLED'], to: 'EXPIRED' },
 };
 
-/** Status an entry must be in before `action`. */
-export function requiredStatus(action: EntryAction): EntryStatus {
+/** Statuses from which `action` is allowed. */
+export function allowedFrom(action: EntryAction): readonly EntryStatus[] {
   return TRANSITIONS[action].from;
 }
 
+/** Status an entry must be in before a single-source action (call, start, complete, noShow). */
+export function requiredStatus(action: EntryAction): EntryStatus {
+  return TRANSITIONS[action].from[0];
+}
+
 export function canTransition(from: EntryStatus, action: EntryAction): boolean {
-  return TRANSITIONS[action].from === from;
+  return TRANSITIONS[action].from.includes(from);
 }
 
 /** Returns the status after `action`, or throws InvalidTransitionError. */

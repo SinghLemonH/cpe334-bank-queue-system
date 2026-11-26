@@ -109,3 +109,12 @@ export class NotFoundError extends DomainError {
     super(message);
   }
 }
+
+/** 409 NO_SHOW_TOO_EARLY: no-show before the grace period has passed (F-05, BR-12, D-29). */
+export class NoShowTooEarlyError extends DomainError {
+  readonly statusCode = 409;
+  readonly errorCode = 'NO_SHOW_TOO_EARLY';
+  constructor(message = 'Please wait until the grace period has passed before marking no-show.') {
+    super(message);
+  }
+}

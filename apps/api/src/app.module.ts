@@ -8,6 +8,7 @@ import { getDataSourceOptions } from './infrastructure/data-source';
 import { AuthModule } from './modules/auth.module';
 import { QueueModule } from './modules/queue.module';
 import { ServiceDeskModule } from './modules/service-desk.module';
+import { LifecycleModule } from './modules/lifecycle.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ServiceDeskModule } from './modules/service-desk.module';
     AuthModule,
     QueueModule,
     ServiceDeskModule,
+    LifecycleModule,
   ],
   controllers: [HealthController, ReadyController, VersionController],
 })
