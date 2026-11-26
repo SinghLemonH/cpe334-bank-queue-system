@@ -1,6 +1,6 @@
 # F-02 Join Queue & My Ticket - Feature Contract
 
-**Contract v1 - 2026-11-06**
+**Contract v2 - 2026-11-26** (v1 2026-11-06; v2 = Lab 7 CR-01, BR-02 v2: one active ticket per customer per day across all queues; see section 9 and `docs/labs/lab07/change-request.md`)
 **Feature:** F-02 Join queue & my ticket (Sprint 1)
 **Requirements:** FR-02, FR-03; BR-01, BR-02, BR-08, BR-09, BR-10; NFR-03
 **Decisions used:** D-01, D-02, D-03, D-06, D-07, D-08, D-11, D-13, D-15, D-16, D-20
@@ -35,7 +35,8 @@ sequenceDiagram
     else is_open = false
         S-->>C: 409 QUEUE_CLOSED
     end
-    S->>DB: SELECT active entry (queue, today, customer, status IN WAITING/CALLED/SERVING)
+    S->>DB: SELECT pg_advisory_xact_lock(customer, today)  (v2: serializes this customer's joins)
+    S->>DB: SELECT active entry (ANY queue, today, customer, status IN WAITING/CALLED/SERVING)  (v1: this queue only)
     alt exists
         S-->>C: 409 DUPLICATE_ACTIVE_ENTRY
     end
@@ -52,7 +53,8 @@ sequenceDiagram
 Steps in detail (system SDS 2.4 "Join"):
 1. Load the queue by code. Missing -> 404 `NOT_FOUND`. `is_open = false` -> 409 `QUEUE_CLOSED`.
 2. `queueDate = clock.today()` (Asia/Bangkok).
-3. Pre-check: an entry for (queue, queueDate, customer) with status WAITING/CALLED/SERVING exists -> 409 `DUPLICATE_ACTIVE_ENTRY`.
+3. **(v2)** Take `pg_advisory_xact_lock(hashtext('join:' || customerId || ':' || queueDate))`. Two joins from the same customer on the same day run one after the other; joins from different customers are not blocked. The lock is released at commit/rollback.
+3a. **(v2)** Pre-check: an entry for (**any queue**, queueDate, customer) with status WAITING/CALLED/SERVING exists -> 409 `DUPLICATE_ACTIVE_ENTRY`. *(v1: an entry for (this queue, queueDate, customer).)*
 4. Increment the daily counter with the upsert, get `seq`.
 5. Insert the entry: `seq`, `display_number = formatDisplayNumber(code, seq)`, `lane = 'REGULAR'`, `status = 'WAITING'`, `joined_at = clock.now()`, `operator_id = NULL`.
 6. A `23505` on `uq_active_entry_per_customer` (two joins from the same customer racing) is mapped to `DUPLICATE_ACTIVE_ENTRY`. The rollback also removes the counter increment, so numbers have no gaps.
@@ -77,9 +79,13 @@ CANCELLED, NO_SHOW and EXPIRED exist in the schema (D-15) but are not reachable 
 |---|---|---|---|
 | BR-01 | Display numbers unique per queue per day, also under concurrent joins | counter upsert + `uq_entry_number (queue_id, queue_date, seq)` | TEST-14 |
 | BR-02 | At most one active (WAITING/CALLED/SERVING) entry per customer per queue per day | 409 `DUPLICATE_ACTIVE_ENTRY`; still exactly one active row | TEST-11 (TDD) |
-| BR-02 scope | A customer may be active in **different** queues at once | D and L both 201 | TEST-12 |
+| ~~BR-02 scope (v1)~~ | ~~A customer may be active in **different** queues at once - D and L both 201~~ | replaced by the next row in v2 | ~~TEST-12~~ |
+| BR-02 v2 | At most one active entry per customer per day **across all queues**. Active in D, join L | 409 `DUPLICATE_ACTIVE_ENTRY`; no L row; L counter not created; still 1 active row | TEST-12 v2 |
+| BR-02 v2 boundary | D entry is CALLED or SERVING, join L | 409 `DUPLICATE_ACTIVE_ENTRY` | TEST-12 v2 (boundary) |
+| BR-02 v2 boundary | D entry is COMPLETED today, join L | 201 `L001` | TEST-12 v2 (boundary) |
+| BR-02 v2 race | Same customer joins D and L concurrently | exactly one 201 and one 409; 1 active row | TEST-12 v2 (race) |
 | BR-02 scope | After the entry reaches a terminal status (COMPLETED) the customer may join the same queue again the same day | 201 with the next number (`D002`) | TEST-12 (extra case) |
-| BR-02 / D-13 | An active entry from an **earlier** `queue_date` never blocks today | join today -> 201 `D001` | TEST-15 |
+| BR-02 / D-13 | An active entry from an **earlier** `queue_date` never blocks today (any queue) | join today -> 201 `D001`; yesterday's D does not block L today | TEST-15, TEST-12 v2 (boundary) |
 | BR-08 | No financial or national-ID data | entry has only queue, customer, lane, status, operator, timestamps; response has no customer id/name | manual check (dod.md 1A, per traceability 5.1); supporting key assertion in TEST-10 |
 | BR-09 | Closed queue rejects joins | 409 `QUEUE_CLOSED`; no row; counter unchanged | TEST-13 |
 | BR-09 order | Closed **and** customer already active | `QUEUE_CLOSED` wins (closed check runs first) | - (design note) |
@@ -131,7 +137,7 @@ No request body. 201:
 | 403 | `FORBIDDEN` | caller is an OPERATOR |
 | 404 | `NOT_FOUND` | unknown queue code |
 | 409 | `QUEUE_CLOSED` | `is_open = false` |
-| 409 | `DUPLICATE_ACTIVE_ENTRY` | customer already active in this queue today |
+| 409 | `DUPLICATE_ACTIVE_ENTRY` | customer already has an active entry today in **any** queue (v2; v1: in this queue) |
 
 ### 4.3 `GET /api/me/entries` (CUSTOMER)
 200: array of the caller's entries whose `queue_date` is today (all statuses), ordered by `joinedAt` ascending. `[]` when none. Errors: 401, 403.
@@ -150,7 +156,7 @@ No request body. 201:
 
 | Code | Message (EN) | Message (TH) |
 |---|---|---|
-| `DUPLICATE_ACTIVE_ENTRY` | You already have an active ticket in this queue today. | คุณมีบัตรคิวที่ยังใช้งานอยู่ในคิวนี้แล้ววันนี้ |
+| `DUPLICATE_ACTIVE_ENTRY` | You already have an active ticket today. Finish it before joining another queue. *(v1: You already have an active ticket in this queue today.)* | คุณมีบัตรคิวที่ยังใช้งานอยู่แล้ววันนี้ กรุณารอให้เสร็จก่อนรับบัตรคิวใหม่ *(v1: คุณมีบัตรคิวที่ยังใช้งานอยู่ในคิวนี้แล้ววันนี้)* |
 | `QUEUE_CLOSED` | This queue is closed. Please choose another service. | คิวนี้ปิดให้บริการแล้ว กรุณาเลือกบริการอื่น |
 | `NOT_FOUND` | This queue no longer exists. | ไม่พบคิวนี้ |
 | `FORBIDDEN` | Only customers can join a queue. | เฉพาะลูกค้าเท่านั้นที่สามารถรับบัตรคิวได้ |
@@ -174,6 +180,8 @@ After `DUPLICATE_ACTIVE_ENTRY`, also show a link "View my ticket" to `/my-ticket
 ## 6. Data specification
 
 **No schema change.** Migration 001 already has every column (including `lane` and all statuses, D-15).
+
+**v2: still no migration.** The cross-queue rule is enforced by the advisory lock + pre-check (section 1.1 step 3). A unique index on `(customer_id, queue_date)` was rejected: existing rows that were valid under v1 (one customer active in D and L on the same date) would make the index creation fail, and rewriting accepted history is out of scope. `uq_active_entry_per_customer` stays as the per-queue safety net for AC-11.
 
 | Table | Fields used | Constraints relied on |
 |---|---|---|
@@ -205,7 +213,8 @@ TDD order: `test(F-02): TEST-11 failing - duplicate active entry` -> save red ou
 | AC-09 | `GET /api/queues` -> `[{code, name, isOpen, waitingCount}]` for any logged-in user. | API | TEST-09 |
 | AC-10 | Customer joins open queue D -> 201 `{id, queueCode:'D', displayNumber:'D001', status:'WAITING', lane:'REGULAR', peopleAhead:0}`; the row exists in the DB. | API | TEST-10 |
 | AC-11 ★TDD | Second join to the same queue on the same day while active -> 409 `DUPLICATE_ACTIVE_ENTRY`; still exactly one active row. | API | TEST-11 |
-| AC-12 | The same customer can join D and L at the same time -> both 201. | API | TEST-12 |
+| ~~AC-12 v1~~ | ~~The same customer can join D and L at the same time -> both 201.~~ | - | - |
+| AC-12 v2 | A customer with an active (WAITING/CALLED/SERVING) entry today in D who joins L -> 409 `DUPLICATE_ACTIVE_ENTRY`, no L row, L counter unchanged. Boundaries: COMPLETED D -> L 201; yesterday's active D -> L 201; concurrent D+L -> exactly one 201. | API | TEST-12 v2 |
 | AC-13 | Join a closed queue -> 409 `QUEUE_CLOSED`; no row inserted; counter unchanged. | API | TEST-13 |
 | AC-14 | 20 different customers join D concurrently -> 20 rows with seq 1..20, no duplicates. | API | TEST-14 |
 | AC-15 | First entry of a Bangkok date is `001`; the next Bangkok date restarts at `001`; queues number independently. | API (fixed Clock) + unit | TEST-15, UT-02, UT-03 |
@@ -220,3 +229,4 @@ Negative / boundary / role coverage: AC-11 (rule), AC-13 (closed), AC-14 (concur
 | Version | Date | Author | Change | Reason |
 |---|---|---|---|---|
 | v1 | 2026-11-06 | WATHITx | Initial contract (Issue #5) | Contract before code |
+| v2 | 2026-11-26 | WATHITx | BR-02 v2 / AC-12 v2: one active entry per customer per day across all queues; advisory lock; new message text | Lab 7 CR-01 (`docs/labs/lab07/change-request.md`), reviewed before implementation |

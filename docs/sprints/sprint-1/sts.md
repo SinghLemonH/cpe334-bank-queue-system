@@ -1,6 +1,6 @@
 # Sprint 1 Software Test Specification (STS)
 
-**STS v1 - 2026-11-06** - Issue #5
+**STS v2 - 2026-11-26** - Issue #5; v2 = Lab 7 CR-01 (TEST-12, TEST-15, TEST-18 revised; see section 5)
 **Covers:** AC-01..AC-30 via TEST-01..TEST-30, UT-01..UT-04, E2E-01 (= TEST-08), E2E-02 (= TEST-18, TEST-30)
 **Contracts:** [F-01-auth.md](F-01-auth.md), [F-02-join-queue.md](F-02-join-queue.md), [F-03-service-desk.md](F-03-service-desk.md)
 
@@ -65,7 +65,12 @@ Sequence for each: commit the failing test (`test(F-0X): ... failing`) -> run `n
 | TEST-10 | AC-10 | API | FX; D empty today | `POST /api/queues/D/entries` as `c1` | 201 `{id, queueCode:'D', displayNumber:'D001', status:'WAITING', lane:'REGULAR', peopleAhead:0, joinedAt:<clock>, calledAt:null, startedAt:null, endedAt:null}`; response has no customer id/name; DB row exists with `customer_id = c1`, `seq = 1`, `queue_date = '2026-11-06'`, `joined_at = clock` |
 | TEST-10 (extra) | AC-10 | API | FX | join as `c1` with body `{lane:'PRIORITY', customerId:<c2 id>}` | 201; `lane:'REGULAR'`; the row's `customer_id = c1` |
 | TEST-11 ★TDD | AC-11 | API | FX; `c1` has a WAITING entry in D today | `POST /api/queues/D/entries` as `c1` again | 409 `DUPLICATE_ACTIVE_ENTRY`; exactly 1 active row for (`c1`, D, today); `queue_daily_counter.last_seq` still 1 |
-| TEST-12 | AC-12 | API | FX | `c1` joins D, then L | both 201 (`D001`, `L001`); 2 active rows for `c1` |
+| ~~TEST-12 v1~~ | ~~AC-12 v1~~ | API | FX | `c1` joins D, then L | ~~both 201 (`D001`, `L001`); 2 active rows for `c1`~~ (replaced in v2) |
+| TEST-12 v2 | AC-12 v2 | API | FX | `c1` joins D, then L | D 201 `D001`; L 409 `DUPLICATE_ACTIVE_ENTRY`; 1 active row for `c1`; no `queue_daily_counter` row for L today |
+| TEST-12 v2 (boundary) | AC-12 v2 | API | FX; `c1`'s D entry set to CALLED, then to SERVING (by `teller1`) | `c1` joins L each time | 409 `DUPLICATE_ACTIVE_ENTRY` both times; no L row |
+| TEST-12 v2 (boundary) | AC-12 v2 | API | FX; `c1`'s D entry set to COMPLETED | `c1` joins L | 201 `L001` |
+| TEST-12 v2 (boundary) | AC-12 v2 / D-13 | API | FX; `c1` has a WAITING D entry dated yesterday | `c1` joins L | 201 `L001` |
+| TEST-12 v2 (race) | AC-12 v2 | API | FX | `c1` joins D and L with `Promise.all` | statuses sorted = [201, 409]; exactly 1 active row for `c1` |
 | TEST-12 (extra) | AC-12 / BR-02 scope | API | FX; `c1`'s D entry set to COMPLETED in the DB | `c1` joins D again | 201 `D002` |
 | TEST-13 | AC-13 | API | FX; D set `is_open = false` | `c1` joins D | 409 `QUEUE_CLOSED`; no `queue_entries` row; no `queue_daily_counter` row for D today |
 | TEST-13 (extra) | AC-13 | API | FX | `c1` joins `Z` and `d` | 404 `NOT_FOUND` for both |
@@ -165,3 +170,4 @@ Negative / boundary / role cases required by the review checklist: AC-02, AC-06,
 | Version | Date | Author | Change |
 |---|---|---|---|
 | v1 | 2026-11-06 | WATHITx | Initial STS (Issue #5) |
+| v2 | 2026-11-26 | WATHITx | Lab 7 CR-01: TEST-12 replaced by TEST-12 v2 (+ boundary and race cases). TEST-15 setup: the L join is made by a new customer `c3` instead of `c1` (assertions unchanged). TEST-18: duplicate message text updated. |

@@ -27,8 +27,9 @@ const MESSAGES: Record<string, FriendlyMessage> = {
   },
   // F-02 Join queue (docs/sprints/sprint-1/F-02-join-queue.md 5.1)
   DUPLICATE_ACTIVE_ENTRY: {
-    en: 'You already have an active ticket in this queue today.',
-    th: 'คุณมีบัตรคิวที่ยังใช้งานอยู่ในคิวนี้แล้ววันนี้',
+    // BR-02 v2 (Lab 7 CR-01): one active ticket per day across all queues.
+    en: 'You already have an active ticket today. Finish it before joining another queue.',
+    th: 'คุณมีบัตรคิวที่ยังใช้งานอยู่แล้ววันนี้ กรุณารอให้เสร็จก่อนรับบัตรคิวใหม่',
   },
   QUEUE_CLOSED: {
     en: 'This queue is closed. Please choose another service.',

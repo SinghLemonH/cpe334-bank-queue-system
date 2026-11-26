@@ -203,19 +203,94 @@ describe('F-02 Join queue (integration)', () => {
     expect(counter[0].last_seq).toBe(1);
   });
 
-  it('TEST-12 / AC-12: the same customer can be active in two queues', async () => {
-    const sid = await login('c1');
-    const d = await join(sid, 'D').expect(201);
-    const l = await join(sid, 'L').expect(201);
-    expect(d.body.displayNumber).toBe('D001');
-    expect(l.body.displayNumber).toBe('L001');
-
+  /*
+   * TEST-12 v2 / AC-12 v2 (Lab 7 CR-01, STS v2). BR-02 v2: one active entry per customer per day
+   * across ALL queues. Replaces TEST-12 v1 "the same customer can be active in two queues" (D and L both 201).
+   */
+  async function activeCount(customerId: string): Promise<number> {
     const rows = await db.query(
       `SELECT count(*)::int AS n FROM queue_entries
-       WHERE customer_id = $1 AND status IN ('WAITING','CALLED','SERVING')`,
-      [c1.id],
+       WHERE customer_id = $1 AND queue_date = $2 AND status IN ('WAITING','CALLED','SERVING')`,
+      [customerId, TODAY],
     );
-    expect(rows[0].n).toBe(2);
+    return rows[0].n as number;
+  }
+
+  async function lRowsToday(): Promise<{ entries: number; counters: number }> {
+    const lId = await queueId('L');
+    const e = await db.query(`SELECT count(*)::int AS n FROM queue_entries WHERE queue_id = $1 AND queue_date = $2`, [
+      lId,
+      TODAY,
+    ]);
+    const c = await db.query(
+      `SELECT count(*)::int AS n FROM queue_daily_counter WHERE queue_id = $1 AND queue_date = $2`,
+      [lId, TODAY],
+    );
+    return { entries: e[0].n, counters: c[0].n };
+  }
+
+  it('TEST-12 v2 / AC-12: a customer active in D today cannot join L (one active ticket across queues)', async () => {
+    const sid = await login('c1');
+    const d = await join(sid, 'D').expect(201);
+    expect(d.body.displayNumber).toBe('D001');
+
+    const l = await join(sid, 'L');
+    expect(l.status).toBe(409);
+    expect(l.body).toEqual({ error: { code: 'DUPLICATE_ACTIVE_ENTRY', message: expect.any(String) } });
+
+    expect(await activeCount(c1.id)).toBe(1);
+    expect(await lRowsToday()).toEqual({ entries: 0, counters: 0 });
+  });
+
+  it('TEST-12 v2 / AC-12: boundary - a CALLED or SERVING entry in D also blocks joining L', async () => {
+    const sid = await login('c1');
+    const d = await join(sid, 'D').expect(201);
+
+    await db.query(`UPDATE queue_entries SET status = 'CALLED', operator_id = $2, called_at = $3 WHERE id = $1`, [
+      d.body.id,
+      teller1.id,
+      DEFAULT_TEST_TIME,
+    ]);
+    const whileCalled = await join(sid, 'L');
+    expect(whileCalled.status).toBe(409);
+    expect(whileCalled.body.error.code).toBe('DUPLICATE_ACTIVE_ENTRY');
+
+    await db.query(`UPDATE queue_entries SET status = 'SERVING', started_at = $2 WHERE id = $1`, [
+      d.body.id,
+      DEFAULT_TEST_TIME,
+    ]);
+    const whileServing = await join(sid, 'L');
+    expect(whileServing.status).toBe(409);
+    expect(whileServing.body.error.code).toBe('DUPLICATE_ACTIVE_ENTRY');
+
+    expect(await lRowsToday()).toEqual({ entries: 0, counters: 0 });
+  });
+
+  it('TEST-12 v2 / AC-12: boundary - a COMPLETED entry in D frees the customer to join L', async () => {
+    const sid = await login('c1');
+    const d = await join(sid, 'D').expect(201);
+    await db.query(`UPDATE queue_entries SET status = 'COMPLETED', operator_id = $2, ended_at = $3 WHERE id = $1`, [
+      d.body.id,
+      teller1.id,
+      DEFAULT_TEST_TIME,
+    ]);
+
+    const l = await join(sid, 'L').expect(201);
+    expect(l.body.displayNumber).toBe('L001');
+  });
+
+  it("TEST-12 v2 / AC-12: boundary - yesterday's active entry in D does not block L today", async () => {
+    await insertEntry(await queueId('D'), '2026-11-05', 1, 'D001', c1.id);
+    const l = await join(await login('c1'), 'L').expect(201);
+    expect(l.body.displayNumber).toBe('L001');
+  });
+
+  it('TEST-12 v2 / AC-12: race - concurrent joins to D and L by one customer give exactly one ticket', async () => {
+    const sid = await login('c1');
+    const results = await Promise.all([join(sid, 'D'), join(sid, 'L')]);
+    expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+    expect(results.find((r) => r.status === 409)?.body.error.code).toBe('DUPLICATE_ACTIVE_ENTRY');
+    expect(await activeCount(c1.id)).toBe(1);
   });
 
   it('TEST-12 / AC-12: a completed entry frees the queue for another ticket the same day', async () => {
@@ -291,7 +366,10 @@ describe('F-02 Join queue (integration)', () => {
 
     const d1 = await join(c1Sid, 'D').expect(201);
     const d2 = await join(c2Sid, 'D').expect(201);
-    const l1 = await join(c1Sid, 'L').expect(201);
+    // STS v2 (Lab 7 CR-01): a third customer joins L, because under BR-02 v2 c1 and c2 already hold D.
+    // The numbering and midnight assertions are unchanged.
+    await insertUser('c3', 'CUSTOMER', 'Customer Three');
+    const l1 = await join(await login('c3'), 'L').expect(201);
     expect([d1.body.displayNumber, d2.body.displayNumber, l1.body.displayNumber]).toEqual(['D001', 'D002', 'L001']);
 
     const before = await db.query(

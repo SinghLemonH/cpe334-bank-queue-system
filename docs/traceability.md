@@ -1,6 +1,6 @@
 # Requirements Traceability Matrix: Bank Branch Queue System
 
-Version 1.1 (7 Nov 2026). Requirement definitions are in `docs/srs.md`; feature descriptions are in `docs/features.md`. Version 1.1 records the Sprint 1 test files and marks those rows implemented. It does not record pass counts.
+Version 1.2 (26 Nov 2026; 1.1 7 Nov 2026). Version 1.2 records Lab 7 CR-01 (BR-02 v2, AC-12 v2). Requirement definitions are in `docs/srs.md`; feature descriptions are in `docs/features.md`. Version 1.1 records the Sprint 1 test files and marks those rows implemented. It does not record pass counts.
 
 ## 1. How to read this document
 
@@ -80,7 +80,7 @@ Every Sprint 1 AC traces back to at least one requirement.
 | AC-09 | GET /api/queues returns code, name, isOpen, waitingCount | FR-02 | F-02 | API | TEST-09 |
 | AC-10 | Join open queue D: 201, D001, WAITING, REGULAR, peopleAhead, row in DB | FR-02, FR-03, BR-01 | F-02 | API | TEST-10 |
 | AC-11 | Second active join to same queue: 409 DUPLICATE_ACTIVE_ENTRY (TDD) | BR-02 | F-02 | API | TEST-11 |
-| AC-12 | Same customer joins D and L at the same time: both 201 | BR-02 | F-02 | API | TEST-12 |
+| AC-12 v2 | Customer active in D today joins L: 409 DUPLICATE_ACTIVE_ENTRY (v1: both 201). COMPLETED or yesterday's entry does not block. | BR-02 v2 | F-02 | API | TEST-12 v2 |
 | AC-13 | Join closed queue: 409 QUEUE_CLOSED, no row, counter unchanged | BR-09 | F-02 | API | TEST-13 |
 | AC-14 | 20 concurrent joins: seq 1..20, no duplicates | BR-01, NFR-03 | F-02 | API | TEST-14 |
 | AC-15 | First entry of a Bangkok date is 001; next date restarts; queues independent | BR-01, BR-10 | F-02 | API + UT-02, UT-03 | TEST-15 |
