@@ -1,0 +1,93 @@
+# Lab 7 CR-01 RED evidence
+# Run at: 2026-11-26 13:48:24 +0700
+# Tested commit: 253dec09f2ffdac34ed3251a97d9b2298925abda (test commit on top of pre-change main a3c243f; application code identical to a3c243f)
+# Code diff vs a3c243f in apps/api/src: 0 lines (none)
+# Node: v24.14.0  npm: 11.9.0
+# Command: cd apps/api && npx jest --config jest.config.ts --runInBand --ci test/integration/f02-join-queue.spec.ts
+
+(node:25720) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 listening listeners added to [Server]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25720) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 error listeners added to [Server]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(node:25720) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 close listeners added to [Server]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+FAIL test/integration/f02-join-queue.spec.ts
+  F-02 Join queue (integration)
+    √ TEST-09 / AC-09: lists queues with today waiting counts for any signed-in user (131 ms)
+    √ TEST-10 / AC-10: customer joins an open queue and the row is stored (58 ms)
+    √ TEST-10 / AC-10: a request body cannot choose the lane or the customer (47 ms)
+    √ TEST-11 / AC-11: rejects second active entry for same customer and queue (59 ms)
+    × TEST-12 v2 / AC-12: a customer active in D today cannot join L (one active ticket across queues) (60 ms)
+    × TEST-12 v2 / AC-12: boundary - a CALLED or SERVING entry in D also blocks joining L (60 ms)
+    √ TEST-12 v2 / AC-12: boundary - a COMPLETED entry in D frees the customer to join L (59 ms)
+    √ TEST-12 v2 / AC-12: boundary - yesterday's active entry in D does not block L today (46 ms)
+    × TEST-12 v2 / AC-12: race - concurrent joins to D and L by one customer give exactly one ticket (60 ms)
+    √ TEST-12 / AC-12: a completed entry frees the queue for another ticket the same day (57 ms)
+    √ TEST-13 / AC-13: a closed queue rejects the join and does not take a number (39 ms)
+    √ TEST-13 / AC-13: an unknown or lower-case queue code is not found (45 ms)
+    √ TEST-14 / AC-14: twenty concurrent joins receive seq 1 through 20 (478 ms)
+    √ TEST-15 / AC-15: numbering restarts at Bangkok midnight and an older active entry does not block (118 ms)
+    √ TEST-16 / AC-16: a customer reads their own entry; someone else's entry stays hidden (92 ms)
+    √ TEST-16 / AC-16: a bad id is not found, and my entries are only today's own tickets (77 ms)
+    √ TEST-17 / AC-17: an operator cannot join a queue or read customer tickets (43 ms)
+
+  ● F-02 Join queue (integration) › TEST-12 v2 / AC-12: a customer active in D today cannot join L (one active ticket across queues)
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 409
+    Received: 201
+
+      236 |
+      237 |     const l = await join(sid, 'L');
+    > 238 |     expect(l.status).toBe(409);
+          |                      ^
+      239 |     expect(l.body).toEqual({ error: { code: 'DUPLICATE_ACTIVE_ENTRY', message: expect.any(String) } });
+      240 |
+      241 |     expect(await activeCount(c1.id)).toBe(1);
+
+      at Object.<anonymous> (test/integration/f02-join-queue.spec.ts:238:22)
+
+  ● F-02 Join queue (integration) › TEST-12 v2 / AC-12: boundary - a CALLED or SERVING entry in D also blocks joining L
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 409
+    Received: 201
+
+      253 |     ]);
+      254 |     const whileCalled = await join(sid, 'L');
+    > 255 |     expect(whileCalled.status).toBe(409);
+          |                                ^
+      256 |     expect(whileCalled.body.error.code).toBe('DUPLICATE_ACTIVE_ENTRY');
+      257 |
+      258 |     await db.query(`UPDATE queue_entries SET status = 'SERVING', started_at = $2 WHERE id = $1`, [
+
+      at Object.<anonymous> (test/integration/f02-join-queue.spec.ts:255:32)
+
+  ● F-02 Join queue (integration) › TEST-12 v2 / AC-12: race - concurrent joins to D and L by one customer give exactly one ticket
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Array [
+        201,
+    -   409,
+    +   201,
+      ]
+
+      289 |     const sid = await login('c1');
+      290 |     const results = await Promise.all([join(sid, 'D'), join(sid, 'L')]);
+    > 291 |     expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+          |                                                 ^
+      292 |     expect(results.find((r) => r.status === 409)?.body.error.code).toBe('DUPLICATE_ACTIVE_ENTRY');
+      293 |     expect(await activeCount(c1.id)).toBe(1);
+      294 |   });
+
+      at Object.<anonymous> (test/integration/f02-join-queue.spec.ts:291:49)
+
+Test Suites: 1 failed, 1 total
+Tests:       3 failed, 14 passed, 17 total
+Snapshots:   0 total
+Time:        4.122 s, estimated 24 s
+Ran all test suites matching /test\\integration\\f02-join-queue.spec.ts/i.
