@@ -12,3 +12,19 @@ body {
   background: #f2f1ec;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
+
+/*
+ * Movie-ticket zigzag on the top and bottom edges of the /my-ticket card (ui-spec 4.8).
+ * --t is the tooth size; the card keeps at least --t of vertical padding so content is not cut.
+ * No border or shadow on the card: the mask would cut them unevenly.
+ */
+.ticket-edge {
+  --t: 8px;
+  padding-block: var(--t);
+  -webkit-mask:
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(2 * var(--t)) 51% repeat-x,
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / calc(2 * var(--t)) 51% repeat-x;
+  mask:
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(2 * var(--t)) 51% repeat-x,
+    conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top / calc(2 * var(--t)) 51% repeat-x;
+}

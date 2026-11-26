@@ -122,6 +122,16 @@ export function ClockIcon(props: IconProps) {
   );
 }
 
+/** Calendar: the queue date on the ticket card (ui-spec 4.8). */
+export function CalendarIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+      <path d="M8 3v4M16 3v4M3.5 10h17" />
+    </Icon>
+  );
+}
+
 /** Waving hand, drawn as a simple outline (replaces the emoji in the reference design). */
 export function WaveIcon(props: IconProps) {
   return (

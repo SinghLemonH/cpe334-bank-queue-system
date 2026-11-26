@@ -10,6 +10,7 @@ import { BoardModule } from './modules/board.module';
 import { CounterModule } from './modules/counter.module';
 import { QueueModule } from './modules/queue.module';
 import { ServiceDeskModule } from './modules/service-desk.module';
+import { LifecycleModule } from './modules/lifecycle.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { ServiceDeskModule } from './modules/service-desk.module';
     CounterModule,
     QueueModule,
     ServiceDeskModule,
+    LifecycleModule,
   ],
   controllers: [HealthController, ReadyController, VersionController],
 })

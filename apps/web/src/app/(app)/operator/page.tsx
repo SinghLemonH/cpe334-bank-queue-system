@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, EntryStatus, QueueEntry, QueueSummary } from '@/lib/api';
 import { FriendlyMessage, messageFor, messageForDesk } from '@/lib/errors';
 import { AlertCircleIcon, ArrowRightIcon, ClockIcon, SpinnerIcon, TicketIcon } from '@/components/icons';
+import { NoShowButton } from '@/components/operator/NoShowButton';
+import { QueueControls, QueueControlsResult } from '@/components/operator/QueueControls';
 
 const POLL_MS = 5000;
 
@@ -54,6 +56,7 @@ export default function OperatorPage() {
   const [loadError, setLoadError] = useState<FriendlyMessage | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   const [actionError, setActionError] = useState<FriendlyMessage | null>(null);
+  const [notice, setNotice] = useState<FriendlyMessage | null>(null);
 
   const load = useCallback(async (initial: boolean) => {
     try {
@@ -95,6 +98,7 @@ export default function OperatorPage() {
   async function act(key: string, path: string) {
     setWorking(key);
     setActionError(null);
+    setNotice(null);
     try {
       await api<QueueEntry>(path, { method: 'POST' });
     } catch (err) {
@@ -102,6 +106,13 @@ export default function OperatorPage() {
     }
     await load(false);
     setWorking(null);
+  }
+
+  /** F-08 controls report here; the page shows the message and reloads. */
+  async function onQueueControls(result: QueueControlsResult) {
+    setActionError(result.error ?? null);
+    setNotice(result.notice ?? null);
+    await load(false);
   }
 
   const label = entry ? STATUS_LABEL[entry.status] : undefined;
@@ -135,6 +146,16 @@ export default function OperatorPage() {
           {actionError && (
             <div className="mt-6">
               <ErrorAlert message={actionError} testId="desk-error" />
+            </div>
+          )}
+          {notice && (
+            <div
+              role="status"
+              data-testid="desk-notice"
+              className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-700"
+            >
+              <p className="font-medium">{notice.en}</p>
+              <p className="text-emerald-600/80">{notice.th}</p>
             </div>
           )}
 
@@ -185,6 +206,7 @@ export default function OperatorPage() {
                             </>
                           )}
                         </button>
+                        <QueueControls queue={queue} disabled={working !== null} onResult={onQueueControls} />
                       </article>
                     </li>
                   ))}
@@ -238,6 +260,12 @@ export default function OperatorPage() {
                         )}
                       </button>
                     )}
+                    <NoShowButton
+                      entry={entry}
+                      disabled={working !== null}
+                      working={working === 'no-show'}
+                      onNoShow={() => act('no-show', `/entries/${entry.id}/no-show`)}
+                    />
                     {entry.status === 'SERVING' && (
                       <button
                         type="button"
