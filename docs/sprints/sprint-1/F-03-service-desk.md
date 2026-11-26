@@ -1,7 +1,8 @@
 # F-03 Operator Service Desk - Feature Contract
 
-**Contract v1 - 2026-11-06**
-**Feature:** F-03 Operator service desk (Sprint 1)
+**Contract v2 - 2026-11-27** (v1 - 2026-11-06)
+**Feature:** F-03 Operator service desk (Sprint 1; call-next extended in Sprint 2)
+**v2 change:** call-next accepts an optional `{ counterId }` and returns 409 `COUNTER_BUSY` (D-22, BR-13). The full v2 workflow is in [`../sprint-2/README.md`](../sprint-2/README.md) section 4.1; everything below is unchanged and still valid without a body.
 **Requirements:** FR-04, FR-05, FR-13; BR-03, BR-04, BR-05, BR-06, BR-07; NFR-04
 **Decisions used:** D-02, D-04, D-05, D-07, D-13, D-14, D-15, D-16, D-20, D-21, D-22
 **Acceptance criteria:** AC-19..AC-30 - **Tests:** TEST-19..TEST-30 (TEST-30 in E2E-02), UT-01, UT-04
@@ -234,3 +235,4 @@ Negative / boundary / role coverage: AC-21, AC-22 (rules), AC-23 (assignment), A
 | Version | Date | Author | Change | Reason |
 |---|---|---|---|---|
 | v1 | 2026-11-06 | WATHITx | Initial contract (Issue #5) | Contract before code |
+| v2 | 2026-11-27 | WATHITx | Call-next accepts optional `{ counterId }`; new 404 (counter not in this queue) and 409 `COUNTER_BUSY`; entry response gains `counterLabel` (plan Issue S2-1, details in sprint-2/README.md 4.1) | F-07 Counters (FR-09, BR-13), planned as D-22; no Sprint 1 AC changes |

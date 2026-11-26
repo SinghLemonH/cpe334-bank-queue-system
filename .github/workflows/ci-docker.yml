@@ -8,7 +8,7 @@ name: CI & Docker Build
 
 on:
   pull_request:
-    branches: [Lab5-staging, main]
+    branches: [Lab5-staging, sprint-2-staging, sprint-3-staging, main]
   workflow_call:
   workflow_dispatch:
 
