@@ -56,6 +56,11 @@ const MESSAGES: Record<string, FriendlyMessage> = {
     en: 'Only the operator who called this ticket can serve it.',
     th: 'เฉพาะพนักงานที่เรียกคิวนี้เท่านั้นที่ให้บริการได้',
   },
+  // F-07 Counters (docs/sprints/sprint-2/README.md 4.4)
+  COUNTER_BUSY: {
+    en: 'This counter is already serving a customer. Choose another counter.',
+    th: 'ช่องบริการนี้กำลังให้บริการลูกค้าอยู่ กรุณาเลือกช่องอื่น',
+  },
 };
 
 /** Service desk copy for FORBIDDEN (F-03 contract 5): the operator is not assigned to the queue. */
