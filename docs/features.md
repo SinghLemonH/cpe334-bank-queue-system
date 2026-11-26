@@ -37,7 +37,7 @@ Real authentication and server-side role enforcement for the two roles `CUSTOMER
 A customer lists the queues, joins an open one and follows their own ticket.
 
 - **Behavior:** the join assigns the next sequence number of the queue for today in a single transaction and returns the display number (for example `D001`), status WAITING, lane REGULAR and people ahead. `/my-ticket` shows number, status and people ahead and refreshes every 5 seconds.
-- **Rules and boundaries:** one active entry per customer per queue per day (BR-02) but several queues at once are allowed; a closed queue rejects the join with `QUEUE_CLOSED` (BR-09); numbers are unique under 20 concurrent joins (BR-01, NFR-03); numbering restarts at local midnight (BR-10); no financial or national-ID data is stored (BR-08).
+- **Rules and boundaries:** one active entry per customer per day across all queues (BR-02 v2, Lab 7 CR-01; v1 allowed several queues at once); a closed queue rejects the join with `QUEUE_CLOSED` (BR-09); numbers are unique under 20 concurrent joins (BR-01, NFR-03); numbering restarts at local midnight (BR-10); no financial or national-ID data is stored (BR-08).
 - **Permissions:** only customers can join; an operator gets 403. A customer can read only their own entry; another customer's entry returns 404.
 
 ### F-03 Operator service desk (Sprint 1)

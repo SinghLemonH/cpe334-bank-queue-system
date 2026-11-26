@@ -1,6 +1,10 @@
 /** Statuses that still occupy the customer's one active slot (BR-02, D-03). */
 export const ACTIVE_STATUSES = ['WAITING', 'CALLED', 'SERVING'] as const;
 
+/** BR-02 v2 (Lab 7 CR-01): the customer's one active slot covers every queue for the day. */
+export const DUPLICATE_ACTIVE_ENTRY_MESSAGE =
+  'You already have an active ticket today. Finish it before joining another queue.';
+
 export type EntryStatus =
   | 'WAITING'
   | 'CALLED'

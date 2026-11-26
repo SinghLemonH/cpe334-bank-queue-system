@@ -1,5 +1,6 @@
 import { QueryFailedError } from 'typeorm';
 import { DuplicateActiveEntryError, OperatorBusyError } from '../common/errors';
+import { DUPLICATE_ACTIVE_ENTRY_MESSAGE } from '../domain/queue-entry';
 
 interface PgDriverError {
   code?: string;
@@ -15,7 +16,7 @@ export function mapPgError(err: unknown): DuplicateActiveEntryError | OperatorBu
   const driver = err.driverError as PgDriverError;
   if (driver?.code !== '23505') return undefined;
   if (driver.constraint === 'uq_active_entry_per_customer') {
-    return new DuplicateActiveEntryError('You already have an active ticket in this queue today.');
+    return new DuplicateActiveEntryError(DUPLICATE_ACTIVE_ENTRY_MESSAGE);
   }
   if (driver.constraint === 'uq_operator_active_entry') {
     return new OperatorBusyError('Finish your current customer before calling the next one.');

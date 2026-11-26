@@ -30,8 +30,9 @@ test('TEST-18 / AC-18: customer joins from the queue list and a second join expl
   await page.goto('/queues');
   await page.getByTestId('queue-D').getByRole('button', { name: 'Join' }).click();
   const duplicate = page.getByTestId('join-error-D');
-  await expect(duplicate).toContainText('You already have an active ticket in this queue today.');
-  await expect(duplicate).toContainText('คุณมีบัตรคิวที่ยังใช้งานอยู่ในคิวนี้แล้ววันนี้');
+  // STS v2 (Lab 7 CR-01): BR-02 v2 message text. Same 409 code and View my ticket link.
+  await expect(duplicate).toContainText('You already have an active ticket today. Finish it before joining another queue.');
+  await expect(duplicate).toContainText('คุณมีบัตรคิวที่ยังใช้งานอยู่แล้ววันนี้ กรุณารอให้เสร็จก่อนรับบัตรคิวใหม่');
   await expect(page.getByRole('link', { name: 'View my ticket' })).toBeVisible();
 });
 

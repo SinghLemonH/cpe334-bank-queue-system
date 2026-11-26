@@ -1,0 +1,293 @@
+# Lab 7 CR-01 regression: full API suite (unit + F-01 auth + F-02 join + F-03 service desk + health/ready/version)
+# Run at: 2026-11-26 14:08:33 +0700
+# Tested commit: 88baac595dc19a7a043afe39cc706989313d0050
+# Node: v24.14.0  npm: 11.9.0
+# Command: cd apps/api && npx jest --config jest.config.ts --runInBand --ci --verbose
+
+(node:12332) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 listening listeners added to [Server]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12332) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 error listeners added to [Server]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+(node:12332) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 close listeners added to [Server]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+PASS test/integration/f02-join-queue.spec.ts
+  F-02 Join queue (integration)
+    √ TEST-09 / AC-09: lists queues with today waiting counts for any signed-in user (132 ms)
+    √ TEST-10 / AC-10: customer joins an open queue and the row is stored (73 ms)
+    √ TEST-10 / AC-10: a request body cannot choose the lane or the customer (51 ms)
+    √ TEST-11 / AC-11: rejects second active entry for same customer and queue (57 ms)
+    √ TEST-12 v2 / AC-12: a customer active in D today cannot join L (one active ticket across queues) (64 ms)
+    √ TEST-12 v2 / AC-12: boundary - a CALLED or SERVING entry in D also blocks joining L (76 ms)
+    √ TEST-12 v2 / AC-12: boundary - a COMPLETED entry in D frees the customer to join L (51 ms)
+    √ TEST-12 v2 / AC-12: boundary - yesterday's active entry in D does not block L today (48 ms)
+    √ TEST-12 v2 / AC-12: race - concurrent joins to D and L by one customer give exactly one ticket (58 ms)
+    √ TEST-12 / AC-12: a completed entry frees the queue for another ticket the same day (59 ms)
+    √ TEST-13 / AC-13: a closed queue rejects the join and does not take a number (45 ms)
+    √ TEST-13 / AC-13: an unknown or lower-case queue code is not found (42 ms)
+    √ TEST-14 / AC-14: twenty concurrent joins receive seq 1 through 20 (488 ms)
+    √ TEST-15 / AC-15: numbering restarts at Bangkok midnight and an older active entry does not block (114 ms)
+    √ TEST-16 / AC-16: a customer reads their own entry; someone else's entry stays hidden (107 ms)
+    √ TEST-16 / AC-16: a bad id is not found, and my entries are only today's own tickets (84 ms)
+    √ TEST-17 / AC-17: an operator cannot join a queue or read customer tickets (44 ms)
+
+PASS test/integration/f03-service-desk.spec.ts
+  F-03 Operator service desk (integration)
+    √ TEST-26 / AC-26: completing a CALLED entry returns 409 INVALID_TRANSITION and leaves the row unchanged (74 ms)
+    √ TEST-26 / AC-26: starting a SERVING entry (start twice) returns 409 INVALID_TRANSITION (44 ms)
+    √ TEST-26 / AC-26: starting or completing a COMPLETED entry returns 409 INVALID_TRANSITION (50 ms)
+    √ TEST-26 / AC-26: starting or completing a WAITING entry returns 409 INVALID_TRANSITION (C-2) (51 ms)
+    √ TEST-26 / AC-26: start or complete with a malformed or unknown id returns 404 NOT_FOUND (55 ms)
+    √ TEST-19 / AC-19: operator sees only assigned queues with waiting counts and the held entry (73 ms)
+    √ TEST-20 / AC-20: call-next takes the lowest-seq WAITING entry and records the operator (50 ms)
+    √ TEST-21 / AC-21: call-next with nothing WAITING today returns 409 NO_WAITING_ENTRY (47 ms)
+    √ TEST-22 / AC-22: call-next while holding a CALLED or SERVING entry returns 409 OPERATOR_BUSY (75 ms)
+    √ TEST-23 / AC-23: call-next on a queue that is not assigned returns 403 FORBIDDEN (40 ms)
+    √ TEST-23 / AC-23: unknown queue code is 404; start on an unassigned queue is 403 FORBIDDEN (71 ms)
+    √ TEST-24 / AC-24: concurrent call-next never hands the same entry to two operators (5 rounds) (230 ms)
+    √ TEST-25 / AC-25: start and complete record timestamps and the customer sees each status (124 ms)
+    √ TEST-25 / AC-25: after completing, the operator is free to call the next entry (72 ms)
+    √ TEST-27 / AC-27: another operator cannot start or complete an entry they did not call (82 ms)
+    √ TEST-28 / AC-28: a customer gets 403 FORBIDDEN on every operator endpoint (61 ms)
+    √ TEST-29 / AC-29: a COMPLETED entry survives an API restart (NFR-04) (111 ms)
+
+PASS test/integration/f01-auth.spec.ts
+  F-01 Auth & RBAC (integration)
+    TEST-01 / AC-01: valid login
+      √ TEST-01 / AC-01: returns 200, HttpOnly SameSite=Lax sid cookie and the user without the hash (47 ms)
+      √ TEST-01 / AC-01: rejects a non-JSON body with 415 and creates no session (22 ms)
+    TEST-02 / AC-02: invalid login
+      √ TEST-02 / AC-02: wrong password and unknown user get the same 401 body and no cookie (45 ms)
+      √ TEST-02 / AC-02: missing or extra fields get 400 VALIDATION_FAILED and no session (29 ms)
+    TEST-03 / AC-03: current user
+      √ TEST-03 / AC-03: valid cookie returns the current user; no or garbage cookie returns 401 (43 ms)
+    TEST-04 / AC-04: logout
+      √ TEST-04 / AC-04: logout returns 204, deletes the session and the old cookie gets 401 (43 ms)
+    TEST-05 / AC-05: session expiry
+      √ TEST-05 / AC-05: an expired session returns 401 and its row is deleted (37 ms)
+      √ TEST-05 / AC-05: a session one minute before expiry is still valid (34 ms)
+    TEST-06 / AC-06: unauthenticated access
+      √ TEST-06 / AC-06: POST /api/auth/logout without a cookie returns 401 and only {error} (25 ms)
+      √ TEST-06 / AC-06: GET /api/auth/me without a cookie returns 401 and only {error} (22 ms)
+      √ TEST-06 / AC-06: GET /api/queues without a cookie returns 401 and only {error} (19 ms)
+      √ TEST-06 / AC-06: POST /api/queues/D/entries without a cookie returns 401 and only {error} (22 ms)
+      √ TEST-06 / AC-06: GET /api/me/entries without a cookie returns 401 and only {error} (19 ms)
+      √ TEST-06 / AC-06: GET /api/entries/:id without a cookie returns 401 and only {error} (20 ms)
+      √ TEST-06 / AC-06: GET /api/operator/queues without a cookie returns 401 and only {error} (20 ms)
+      √ TEST-06 / AC-06: GET /api/operator/current-entry without a cookie returns 401 and only {error} (21 ms)
+      √ TEST-06 / AC-06: POST /api/queues/D/call-next without a cookie returns 401 and only {error} (20 ms)
+      √ TEST-06 / AC-06: POST /api/entries/:id/start without a cookie returns 401 and only {error} (20 ms)
+      √ TEST-06 / AC-06: POST /api/entries/:id/complete without a cookie returns 401 and only {error} (19 ms)
+    TEST-07 / AC-07: password storage
+      √ TEST-07 / AC-07: the stored password is an argon2id hash, not the plaintext (28 ms)
+
+PASS test/version.spec.ts
+  GET /api/version
+    √ is public and returns the release name and the full commit SHA from GIT_SHA (7 ms)
+    √ reports commit "local" when GIT_SHA is not set (local runs) (7 ms)
+
+[31m[Nest] 12332  - [39m26/11/2569 14:08:48 [31m  ERROR[39m [38;5;3m[GlobalHttpExceptionFilter] [39m[31mServiceUnavailableException: Database is not reachable
+    at ReadyController.check (D:\CPE334\bankQueue\cpe334-bank-queue-system\apps\api\src\presentation\ready.controller.ts:17:13)
+    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+PASS test/ready.spec.ts
+  GET /api/ready (readiness probe used by the deploy smoke test)
+    with the real test database
+      √ returns 200 { status: "ready" } without a session (public endpoint) (23 ms)
+    when the database is unreachable
+      √ returns 503 with the generic error shape and no connection details (14 ms)
+
+[31m[Nest] 12332  - [39m26/11/2569 14:08:49 [31m  ERROR[39m [38;5;3m[GlobalHttpExceptionFilter] [39m[31mError: relation "queue_entries" does not exist: SELECT * FROM users
+    at ProbeController.boom (D:\CPE334\bankQueue\cpe334-bank-queue-system\apps\api\test\error-filter.spec.ts:37:11)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\core\router\router-execution-context.js:50:37
+    at InterceptorsConsumer.intercept (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\core\interceptors\interceptors-consumer.js:13:20)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\core\router\router-execution-context.js:80:64
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\core\router\router-proxy.js:9:23
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\route.js:117:3)
+    at handle (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:295:15
+    at processParams (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:582:12)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:291:5)
+    at read (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\body-parser\lib\read.js:59:5)
+    at urlencodedParser (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\body-parser\lib\types\urlencoded.js:51:5)
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:342:13)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:297:9
+    at processParams (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:582:12)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:291:5)
+    at read (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\body-parser\lib\read.js:59:5)
+    at jsonParser (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\body-parser\lib\types\json.js:60:5)
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:342:13)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:297:9
+    at processParams (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:582:12)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:291:5)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\platform-express\adapters\express-adapter.js:35:17
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:342:13)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:297:9
+    at processParams (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:582:12)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:291:5)
+    at router.handle (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:186:3)
+    at app.handle (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\express\lib\application.js:177:15)
+    at Server.app (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\express\lib\express.js:38:9)
+    at Server.emit (node:events:508:28)
+    at Server.emit (node:domain:489:12)
+    at parserOnIncoming (node:_http_server:1210:12)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:125:17)[39m
+[31m[Nest] 12332  - [39m26/11/2569 14:08:49 [31m  ERROR[39m [38;5;3m[GlobalHttpExceptionFilter] [39m[31mInternalServerErrorException: pg pool exhausted on host db-internal:5432 user=queue
+    at ProbeController.http500 (D:\CPE334\bankQueue\cpe334-bank-queue-system\apps\api\test\error-filter.spec.ts:42:11)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\core\router\router-execution-context.js:50:37
+    at InterceptorsConsumer.intercept (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\core\interceptors\interceptors-consumer.js:13:20)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\core\router\router-execution-context.js:80:64
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\core\router\router-proxy.js:9:23
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\route.js:117:3)
+    at handle (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:295:15
+    at processParams (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:582:12)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:291:5)
+    at read (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\body-parser\lib\read.js:59:5)
+    at urlencodedParser (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\body-parser\lib\types\urlencoded.js:51:5)
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:342:13)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:297:9
+    at processParams (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:582:12)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:291:5)
+    at read (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\body-parser\lib\read.js:59:5)
+    at jsonParser (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\body-parser\lib\types\json.js:60:5)
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:342:13)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:297:9
+    at processParams (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:582:12)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:291:5)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\platform-express\adapters\express-adapter.js:35:17
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:342:13)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:297:9
+    at processParams (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:582:12)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:291:5)
+    at router.handle (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:186:3)
+    at app.handle (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\express\lib\application.js:177:15)
+    at Server.app (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\express\lib\express.js:38:9)
+    at Server.emit (node:events:508:28)
+    at Server.emit (node:domain:489:12)
+    at parserOnIncoming (node:_http_server:1210:12)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:125:17)[39m
+[31m[Nest] 12332  - [39m26/11/2569 14:08:49 [31m  ERROR[39m [38;5;3m[GlobalHttpExceptionFilter] [39m[31mServiceUnavailableException: upstream secret-service timed out
+    at ProbeController.http503 (D:\CPE334\bankQueue\cpe334-bank-queue-system\apps\api\test\error-filter.spec.ts:47:11)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\core\router\router-execution-context.js:50:37
+    at InterceptorsConsumer.intercept (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\core\interceptors\interceptors-consumer.js:13:20)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\core\router\router-execution-context.js:80:64
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\core\router\router-proxy.js:9:23
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\route.js:117:3)
+    at handle (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:295:15
+    at processParams (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:582:12)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:291:5)
+    at read (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\body-parser\lib\read.js:59:5)
+    at urlencodedParser (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\body-parser\lib\types\urlencoded.js:51:5)
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:342:13)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:297:9
+    at processParams (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:582:12)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:291:5)
+    at read (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\body-parser\lib\read.js:59:5)
+    at jsonParser (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\body-parser\lib\types\json.js:60:5)
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:342:13)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:297:9
+    at processParams (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:582:12)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:291:5)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\@nestjs\platform-express\adapters\express-adapter.js:35:17
+    at Layer.handleRequest (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:342:13)
+    at D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:297:9
+    at processParams (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:582:12)
+    at next (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:291:5)
+    at router.handle (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\router\index.js:186:3)
+    at app.handle (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\express\lib\application.js:177:15)
+    at Server.app (D:\CPE334\bankQueue\cpe334-bank-queue-system\node_modules\express\lib\express.js:38:9)
+    at Server.emit (node:events:508:28)
+    at Server.emit (node:domain:489:12)
+    at parserOnIncoming (node:_http_server:1210:12)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:125:17)[39m
+PASS test/error-filter.spec.ts
+  GlobalHttpExceptionFilter error contract
+    √ domain error: 409 with exactly { error: { code, message } } (22 ms)
+    √ framework 401 maps to code UNAUTHENTICATED (3 ms)
+    √ validation failure: 400 VALIDATION_FAILED with a string message (7 ms)
+    √ unknown error: 500 without leaking internal details (8 ms)
+    √ custom 5xx HttpException: generic message, no internal details (4 ms)
+    √ any 5xx HttpException keeps its status but hides its message (3 ms)
+
+PASS test/database.smoke.spec.ts
+  Database and Migration Smoke Verification
+    √ should explicitly connect to the test database
+    √ should use the separate test Postgres instance (port 5433), not the dev database (1 ms)
+    √ should have all 6 core tables present in the database (4 ms)
+    √ should have partial unique indexes registered on queue_entries (6 ms)
+    √ should have row level security enabled on all project tables (3 ms)
+    √ should run seed idempotently without throwing duplicate errors (83 ms)
+
+PASS test/health.spec.ts
+  HealthController (Unit/Integration)
+    √ GET /api/health returns status ok with clock timestamp and date (8 ms)
+
+PASS test/unit/queue-date.spec.ts
+  ManualClock.today
+    √ UT-03: rolls the queue date at Asia/Bangkok midnight (1 ms)
+
+PASS test/unit/data-source-config.spec.ts
+  data-source configuration from environment
+    √ uses no TLS unless DATABASE_SSL=true (local Docker and CI) (1 ms)
+    √ verifies the server certificate by default when TLS is on
+    √ uses DATABASE_SSL_CA (with escaped newlines) as the trusted CA (1 ms)
+    √ skips verification only when DATABASE_SSL_REJECT_UNAUTHORIZED=false
+    √ reads the pool size from DB_POOL_MAX and keeps 30 as the default (TEST-14 needs > 20)
+
+PASS test/unit/fifo-ordering-policy.spec.ts
+  UT-04 FifoOrderingPolicy
+    √ UT-04: returns ANY, ANY, null whatever the recent calls (none) (1 ms)
+    √ UT-04: returns ANY, ANY, null whatever the recent calls (one regular)
+    √ UT-04: returns ANY, ANY, null whatever the recent calls (mixed) (1 ms)
+
+PASS test/unit/entry-status.spec.ts
+  UT-01 entry status transitions
+    √ UT-01: covers 7 statuses x 3 actions (1 ms)
+    √ UT-01: WAITING + call -> CALLED is allowed
+    √ UT-01: CALLED + start -> SERVING is allowed
+    √ UT-01: SERVING + complete -> COMPLETED is allowed
+    √ UT-01: exactly 18 pairs are rejected (1 ms)
+    √ UT-01: WAITING + start throws InvalidTransitionError (4 ms)
+    √ UT-01: WAITING + complete throws InvalidTransitionError
+    √ UT-01: CALLED + call throws InvalidTransitionError (1 ms)
+    √ UT-01: CALLED + complete throws InvalidTransitionError
+    √ UT-01: SERVING + call throws InvalidTransitionError
+    √ UT-01: SERVING + start throws InvalidTransitionError (1 ms)
+    √ UT-01: COMPLETED + call throws InvalidTransitionError
+    √ UT-01: COMPLETED + start throws InvalidTransitionError (1 ms)
+    √ UT-01: COMPLETED + complete throws InvalidTransitionError
+    √ UT-01: CANCELLED + call throws InvalidTransitionError
+    √ UT-01: CANCELLED + start throws InvalidTransitionError (1 ms)
+    √ UT-01: CANCELLED + complete throws InvalidTransitionError
+    √ UT-01: NO_SHOW + call throws InvalidTransitionError
+    √ UT-01: NO_SHOW + start throws InvalidTransitionError (1 ms)
+    √ UT-01: NO_SHOW + complete throws InvalidTransitionError
+    √ UT-01: EXPIRED + call throws InvalidTransitionError (1 ms)
+    √ UT-01: EXPIRED + start throws InvalidTransitionError
+    √ UT-01: EXPIRED + complete throws InvalidTransitionError
+
+PASS test/unit/display-number.spec.ts
+  formatDisplayNumber
+    √ UT-02: pads sequences under 1000 and keeps 4+ digits (1 ms)
+
+Test Suites: 13 passed, 13 total
+Tests:       104 passed, 104 total
+Snapshots:   0 total
+Time:        11.061 s
+Ran all test suites.
