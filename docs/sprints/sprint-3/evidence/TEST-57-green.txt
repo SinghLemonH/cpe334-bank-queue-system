@@ -1,0 +1,12 @@
+
+> @queue-system/api@0.1.0 test
+> jest --config jest.config.ts --runInBand test/integration/f09-priority.spec.ts test/unit/priority-ordering-policy.spec.ts -t TEST-57|UT-08 --no-color
+
+PASS test/integration/f09-priority.spec.ts (8.576 s)
+PASS test/unit/priority-ordering-policy.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       4 skipped, 7 passed, 11 total
+Snapshots:   0 total
+Time:        8.99 s
+Ran all test suites matching /test\\integration\\f09-priority.spec.ts|test\\unit\\priority-ordering-policy.spec.ts/i with tests matching "TEST-57|UT-08".
