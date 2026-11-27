@@ -1,6 +1,6 @@
 # System-Level SDS: Bank Branch Queue System
 
-Version 1.1 (26 Nov 2026; 1.0 5 Nov 2026). 1.1: Lab 7 CR-01 join step 2 (BR-02 v2). Requirements are defined in `docs/srs.md`. Feature allocation is in `docs/features.md`. Detailed endpoint, screen and test contracts per feature are written in `docs/sprints/sprint-N/` before each feature is implemented; this document defines the conventions they follow.
+Version 1.2 (27 Nov 2026; 1.1 26 Nov 2026; 1.0 5 Nov 2026). 1.1: Lab 7 CR-01 join step 2 (BR-02 v2). 1.2: current design at Deliverable 2: migration 002, Sprint 2 and F-09 transactions, endpoint list v2, entry response v2, new error codes, branches and tags (D-25 to D-30); change list in section 10. Requirements are defined in `docs/srs.md`. Feature allocation is in `docs/features.md`. Detailed endpoint, screen and test contracts per feature are written in `docs/sprints/sprint-N/` before each feature is implemented; this document defines the conventions they follow.
 
 ---
 
@@ -70,15 +70,18 @@ flowchart TB
 
 ```
 apps/api/src/
-  domain/          queue-entry, entry-status (transition table), ordering/ (policy interface, FIFO; priority in Sprint 3)
-  application/     auth.service, queue.service, service-desk.service
-  infrastructure/  entities, repositories, migrations, seed, data-source, password-hasher
+  domain/          queue-entry, entry-status (transition table v2), no-show-rule, priority (age, lane),
+                   ordering/ (policy interface, FIFO, PriorityOrderingPolicy)
+  application/     auth, queue, service-desk, lifecycle (cancel, no-show, open/close, end-of-day),
+                   counter, board services
+  infrastructure/  entities, repositories, migrations, seed, data-source, password-hasher, pg-errors
   presentation/    controllers, dto, guards, decorators
   common/          clock, errors, http-exception.filter (shared by all layers)
+  modules/         auth, queue, service-desk, lifecycle, counter, board
   app.module.ts, main.ts
 ```
 
-Sprint 1 has three feature modules: Auth, Queue and ServiceDesk.
+Sprint 1 has three feature modules: Auth, Queue and ServiceDesk. Sprint 2 adds Lifecycle (F-04, F-05, F-08), Counter (F-07) and Board (F-06). F-09 adds no module: it changes the join in Queue and the ordering policy provider in ServiceDesk.
 
 ---
 
@@ -95,8 +98,8 @@ erDiagram
   QUEUES ||--o{ QUEUE_ENTRIES : "contains"
   USERS ||--o{ QUEUE_ENTRIES : "joins as customer"
   USERS ||--o{ QUEUE_ENTRIES : "handles as operator"
-  QUEUES ||--o{ COUNTERS : "has in Sprint 2"
-  COUNTERS ||--o{ QUEUE_ENTRIES : "used by in Sprint 2"
+  QUEUES ||--o{ COUNTERS : "has (migration 002)"
+  COUNTERS ||--o{ QUEUE_ENTRIES : "serves at (migration 002)"
 
   USERS {
     uuid id PK
@@ -139,6 +142,7 @@ erDiagram
     text lane
     text status
     uuid operator_id FK
+    uuid counter_id FK
     timestamptz joined_at
     timestamptz called_at
     timestamptz started_at
@@ -161,7 +165,7 @@ erDiagram
 | `operator_queue_assignment` | Which operators may act on which queues | Composite key (operator, queue); implements BR-05 | Primary key prevents duplicates |
 | `queue_daily_counter` | Last sequence number used per queue per day | Composite key (queue, date) | `last_seq >= 0`; incremented atomically at join |
 | `queue_entries` | One customer's place in one queue on one date | Owned by `customer_id`; `operator_id` is set when called | See below |
-| `counters` (Sprint 2) | Named service points | Belongs to a queue | `UNIQUE(queue_id, label)` |
+| `counters` (Sprint 2, migration 002) | Named service points | Belongs to a queue; referenced by `queue_entries.counter_id` (nullable) | `UNIQUE(queue_id, label)` |
 
 Constraints on `queue_entries`:
 
@@ -205,9 +209,9 @@ stateDiagram-v2
 | SERVING to COMPLETED | Calling operator | 1 | Operator owns the entry |
 | WAITING or CALLED to CANCELLED | Customer (owner) | 2 | Own entry only |
 | CALLED to NO_SHOW | Calling operator | 2 | At least the grace period after `called_at` |
-| WAITING or CALLED to EXPIRED | Operator (end-of-day) | 2 | Assigned queue; entries of that day |
+| WAITING or CALLED to EXPIRED | Operator (end-of-day) | 2 | Assigned queue; entries of **today** only; SERVING untouched (D-27) |
 
-Every other pair is rejected with `INVALID_TRANSITION` and changes no data (BR-04).
+Every other pair is rejected with `INVALID_TRANSITION` and changes no data (BR-04). Cancel, no-show and expire set `ended_at` from the Clock (D-28). The transition table v2 (`domain/entry-status.ts`) lists the actions `call`, `start`, `complete`, `cancel`, `noShow` and `expire`; UT-06 checks every status-action pair.
 
 ### 2.4 Key transactions
 
@@ -215,19 +219,27 @@ Every other pair is rejected with `INVALID_TRANSITION` and changes no data (BR-0
 1. Load the queue by code (404 if missing). If closed, 409 `QUEUE_CLOSED`.
 2. **(v1.1)** Take a transaction-scoped advisory lock on (customer, queue date), then pre-check for an active entry today in **any** queue: 409 `DUPLICATE_ACTIVE_ENTRY`. *(v1.0: in this queue only.)*
 3. Increment the daily counter with a single atomic `INSERT ... ON CONFLICT DO UPDATE ... RETURNING last_seq`.
-4. Insert the entry (lane REGULAR in Sprint 1; computed from the date of birth in Sprint 3). `queue_date` and `joined_at` come from the Clock.
+4. **(v1.2, F-09)** Compute the lane from `users.date_of_birth` and the Bangkok queue date (`laneFor`, age `PRIORITY_AGE` or more → PRIORITY, BR-15), then insert the entry. `queue_date` and `joined_at` come from the Clock. The request body is an empty `JoinQueueDto`, so any client field such as `lane` is rejected with 400 before the transaction starts. *(v1.0: always REGULAR.)*
 5. If a race triggers `23505` on `uq_active_entry_per_customer`, map it to `DUPLICATE_ACTIVE_ENTRY`. The rollback also undoes the counter increment, so numbers have no gaps.
 
-**Call next (one transaction).**
-1. Check the queue assignment (403 `FORBIDDEN`).
-2. Check the operator holds nothing today (409 `OPERATOR_BUSY`; the unique index catches races).
-3. Ask the ordering policy which lane to take, then select the lowest-sequence WAITING entry with `FOR UPDATE SKIP LOCKED`, so two operators never receive the same entry.
-4. None found: 409 `NO_WAITING_ENTRY`.
-5. Conditional update to CALLED with the operator and `called_at` from the Clock.
+**Call next v3 (one transaction).**
+1. **(F-09)** `SELECT id FROM queues WHERE code = $1 FOR UPDATE`: 404 if missing; the row lock serializes concurrent call-next requests on the queue so the anti-starvation count stays correct.
+2. Check the queue assignment (403 `FORBIDDEN`).
+3. **(F-07)** If `counterId` is given, it must be a counter of this queue (404 otherwise; a malformed id is already 400 from the DTO).
+4. Check the operator holds nothing today (409 `OPERATOR_BUSY`; the unique index catches races). Then, if `counterId` is given, the counter must hold no CALLED or SERVING entry today (409 `COUNTER_BUSY`; `uq_counter_active_entry` catches races). Without `counterId` no counter is recorded (D-22).
+5. Read the lanes of the last `PRIORITY_STREAK_LIMIT` called entries of this queue and day (`called_at DESC`) and which lanes have WAITING entries; the ordering policy returns the lane. Then select the lowest-sequence WAITING entry of that lane with `FOR UPDATE SKIP LOCKED`, so two operators never receive the same entry.
+6. None found: 409 `NO_WAITING_ENTRY`.
+7. Conditional update to CALLED with the operator, the counter and `called_at` from the Clock.
 
 **Start and complete.** Load the entry (404), check queue assignment (403), check the operator owns it (403 `NOT_ENTRY_OWNER`), check the transition in the domain (409 `INVALID_TRANSITION`), then a conditional update (`WHERE id = ? AND status = ? AND operator_id = ?`); zero rows updated means `INVALID_TRANSITION`.
 
-**Priority ordering (Sprint 3 design, interface exists from Sprint 1).** A `QueueOrderingPolicy` returns which lane to take next given the recent called lanes and which lanes have waiting entries. Sprint 1 uses `FifoOrderingPolicy`; Sprint 3 adds `PriorityOrderingPolicy` and locks the queue row before choosing, so concurrent operators keep the anti-starvation count correct.
+**Cancel (F-04).** Load the entry by id **and** customer (another customer's entry: 404, D-07), check the transition (WAITING or CALLED, else 409), then a conditional update `WHERE status = ANY(allowed)`; zero rows means `INVALID_TRANSITION`. Cancelling a CALLED entry releases the operator and the counter, because both unique indexes only cover CALLED and SERVING.
+
+**No-show (F-05).** Same checks as start (404, 403 assignment, 403 `NOT_ENTRY_OWNER`, 409 transition), then the grace rule in the domain (`isNoShowAllowed(calledAt, now, NO_SHOW_GRACE_MINUTES)`, 409 `NO_SHOW_TOO_EARLY`), then a conditional update `WHERE status = 'CALLED' AND operator_id = ?`.
+
+**Open/close and end-of-day (F-08).** `PATCH /api/queues/:code { isOpen }` updates the flag of an assigned queue. End-of-day runs in one transaction: lock the queue row, close the queue, set today's WAITING and CALLED entries to EXPIRED with `ended_at`, and return `{ queue, expiredCount }`. Known limitation DEF-02: a join that commits while end-of-day runs can leave one WAITING entry; running end-of-day again expires it (`docs/known-limitations.md`).
+
+**Priority ordering (F-09, Sprint 3).** `PriorityOrderingPolicy` implements the `QueueOrderingPolicy` interface from Sprint 1: PRIORITY before REGULAR, FIFO by `seq` inside a lane, and one REGULAR entry after `PRIORITY_STREAK_LIMIT` consecutive PRIORITY calls when both lanes wait (BR-14). With only REGULAR entries it behaves exactly like `FifoOrderingPolicy`, which is no longer wired.
 
 ### 2.5 Database setup, migrations and seed
 
@@ -238,13 +250,14 @@ Every other pair is rejected with `INVALID_TRANSITION` and changes no data (BR-0
 | Seed demo data | `npm run db:seed` | Idempotent; can be re-run safely |
 | Reset | `npm run db:reset` | Development only |
 
-Planned migrations: 002 (Sprint 2) adds `counters`, `queue_entries.counter_id` and `uq_counter_active_entry`; 003 (Sprint 3, optional) adds a reporting index on (queue, date, status).
+Migrations: 001 `1730800000000-InitMigration` (Sprint 1); 002 `1732600000000-Counters` (Sprint 2, released in `v0.4.0-sprint2`) adds `counters`, `queue_entries.counter_id` and `uq_counter_active_entry`, with a `down()` that was tested. F-09 needs no migration. 003 (a reporting index on queue, date and status) is **not planned**; it is added only if the F-10 summary query is measurably slow. The deploy job runs migrate and seed on every deploy.
 
 Seed data is synthetic and reproducible:
 
 | Item | Content |
 |---|---|
-| Queues | D Deposit & Withdrawal, L Loans, O Account Opening (all open) |
+| Queues | D Deposit & Withdrawal, L Loans, O Account Opening (open when first created; a re-run keeps each queue's current `is_open`, so a redeploy does not reopen a closed queue) |
+| Counters | D: Counter 1, Counter 2; L: Counter 3; O: Counter 4 |
 | Operators | teller1 and teller2 on D, loanofficer1 on L, accountofficer1 on O |
 | Customers | customer1 (born 1948-03-15), customer2 (1995-07-02), customer3 (2001-12-20), customer4 (1950-09-09) |
 | Passwords | One demo password from the environment variable `SEED_DEMO_PASSWORD`, hashed with argon2id at seed time |
@@ -270,9 +283,12 @@ Automated tests create their own fixtures (for example 20 extra customers for th
 | 401 | `UNAUTHENTICATED`, `INVALID_CREDENTIALS` | No valid session; failed login |
 | 403 | `FORBIDDEN`, `NOT_ENTRY_OWNER` | Wrong role, unassigned queue, or entry held by another operator |
 | 404 | `NOT_FOUND` | Missing record, or another customer's entry (D-07) |
-| 409 | `QUEUE_CLOSED`, `DUPLICATE_ACTIVE_ENTRY`, `INVALID_TRANSITION`, `OPERATOR_BUSY`, `NO_WAITING_ENTRY` | Business-rule conflicts |
+| 409 | `QUEUE_CLOSED`, `DUPLICATE_ACTIVE_ENTRY`, `INVALID_TRANSITION`, `OPERATOR_BUSY`, `NO_WAITING_ENTRY`, `NO_SHOW_TOO_EARLY` (Sprint 2), `COUNTER_BUSY` (Sprint 2) | Business-rule conflicts (D-29) |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | A JSON-body endpoint received another content type |
 
-Entry response shape: `{ id, queueCode, displayNumber, status, lane, peopleAhead, joinedAt, calledAt, startedAt, endedAt }`. `peopleAhead` is present only for WAITING entries; `counterLabel` is added in Sprint 2. The current-user response is `{ id, username, displayName, role }` and never contains the password hash or date of birth.
+Entry response shape v2 (D-30): `{ id, queueCode, displayNumber, status, lane, peopleAhead, counterLabel, joinedAt, calledAt, startedAt, endedAt }`. `peopleAhead` is a number only for WAITING entries (people ahead v2, SRS A-06) and `null` otherwise; `counterLabel` is the counter's label, or `null` when the entry was called without a counter or not called yet. The current-user response is `{ id, username, displayName, role }` and never contains the password hash or date of birth.
+
+Public board response (F-06, NFR-05): `{ generatedAt, queues: [{ code, name, isOpen, waitingCount, nowServing: [{ displayNumber, counterLabel, status, lane }] }] }`, header `Cache-Control: no-store`. It contains no id, username or name.
 
 ### 3.1 Endpoint list
 
@@ -281,23 +297,25 @@ Entry response shape: `{ id, queueCode, displayNumber, status, lane, peopleAhead
 | POST `/api/auth/login` | anyone | 200 and cookie, or 401 | 1 |
 | POST `/api/auth/logout` | logged in | 204 | 1 |
 | GET `/api/auth/me` | logged in | 200 current user | 1 |
+| GET `/api/health`, `/api/ready`, `/api/version` | anyone | Liveness, database readiness, `{ version, commit }` | Lab 5 |
 | GET `/api/queues` | logged in | Queues with waiting counts | 1 |
-| POST `/api/queues/:code/entries` | Customer | 201 entry, 404, 409 | 1 |
+| POST `/api/queues/:code/entries` | Customer | 201 entry (lane computed by the server), 400 for any body field (Sprint 3), 404, 409 | 1, 3 |
 | GET `/api/me/entries` | Customer | Own entries for today | 1 |
 | GET `/api/entries/:id` | Customer (own) | 200 or 404 | 1 |
 | GET `/api/operator/queues` | Operator | Assigned queues with waiting counts | 1 |
 | GET `/api/operator/current-entry` | Operator | Held entry or `null` | 1 |
-| POST `/api/queues/:code/call-next` | Operator (assigned) | 200 CALLED entry, 403, 409 | 1 |
+| POST `/api/queues/:code/call-next` with optional `{ counterId }` | Operator (assigned) | 200 CALLED entry, 400, 403, 404, 409 (`COUNTER_BUSY` in Sprint 2) | 1, 2 |
+| GET `/api/queues/:code/counters` | Operator (assigned) | Counters of the queue `[{ id, label }]` | 2 |
 | POST `/api/entries/:id/start` | Operator (caller) | 200 SERVING, 403, 404, 409 | 1 |
 | POST `/api/entries/:id/complete` | Operator (caller) | 200 COMPLETED, 403, 404, 409 | 1 |
-| POST `/api/entries/:id/cancel` | Customer (own) | 200 CANCELLED, 404, 409 | 2 |
-| POST `/api/entries/:id/no-show` | Operator (caller) | 200 NO_SHOW, 403, 409 | 2 |
-| PATCH `/api/queues/:code` with `{isOpen}` | Operator (assigned) | 200 | 2 |
-| POST `/api/queues/:code/end-day` | Operator (assigned) | 200 with `{expiredCount}` | 2 |
-| GET `/api/public/board` | anyone | Per queue: code, name, now-serving numbers with counter labels, waiting count | 2 |
-| GET `/api/queues/:code/summary?from=&to=` | Operator (assigned) | Summary numbers | 3 |
+| POST `/api/entries/:id/cancel` | Customer (own) | 200 CANCELLED, 403 for an operator, 404, 409 | 2 |
+| POST `/api/entries/:id/no-show` | Operator (caller) | 200 NO_SHOW, 403, 404, 409 (`NO_SHOW_TOO_EARLY`, `INVALID_TRANSITION`) | 2 |
+| PATCH `/api/queues/:code` with `{isOpen}` | Operator (assigned) | 200 queue summary, 400, 403, 404 | 2 |
+| POST `/api/queues/:code/end-day` | Operator (assigned) | 200 `{ queue, expiredCount }`, 403, 404 | 2 |
+| GET `/api/public/board` | anyone | Per queue: code, name, open flag, waiting count, now-serving numbers with counter labels and lane | 2 |
+| GET `/api/queues/:code/summary?from=&to=` | Operator (assigned) | Summary numbers (**planned**, F-10) | 3 |
 
-In Sprint 2, call-next also accepts an optional `{ counterId }` (D-22).
+Call-next accepts an optional `{ counterId }` since Sprint 2 (D-22, F-03 contract v2). All endpoints above except the summary are implemented in `v0.4.0-sprint2` (Sprint 1 and 2) or on `sprint-3-staging` (the F-09 join change).
 
 ---
 
@@ -407,7 +425,7 @@ All configuration comes from environment variables. `.env.example` is committed 
 | `SESSION_TTL_HOURS` | api | Session lifetime | Default 8 |
 | `COOKIE_SECURE` | api | `Secure` flag on the cookie | `true` on HTTPS (Cloud Run) |
 | `SEED_DEMO_PASSWORD` | seed | Demo account password | Synthetic; set locally; must not be a real password |
-| `APP_TIMEZONE` | api | Branch time zone | `Asia/Bangkok`; planned |
+| `APP_TIMEZONE` | api | Branch time zone | `Asia/Bangkok`; planned, not read by the code (the zone is fixed in `common/clock`) |
 | `NO_SHOW_GRACE_MINUTES` | api | No-show grace period | Default 2; Sprint 2 |
 | `PRIORITY_AGE`, `PRIORITY_STREAK_LIMIT` | api | Priority eligibility age and anti-starvation limit | Defaults 60 and 3; Sprint 3 |
 
@@ -452,7 +470,18 @@ flowchart LR
 
 ### 7.3 Branching and release flow
 
-`main` is the released line. `sprint-N-staging` integrates reviewed work. Feature, fix, docs and chore branches start from the current staging branch and are merged by pull request with a merge commit only (D-23), after review by the other student. A reviewed release PR merges staging into `main`, followed by an annotated tag (`v0.1.0-sprint1`, `v0.2.0-sprint2`, `v1.0.0`). Lab work uses patch releases from staging (D-24).
+`main` is the released line; every merge into `main` deploys. `sprint-N-staging` integrates reviewed work (D-25: `sprint-2-staging`, `sprint-3-staging`; lab work used `Lab5-staging`). Feature, fix, docs and chore branches start from the current staging branch and are merged by pull request with a merge commit only (D-23), after review by the other student, with the CI check `test-and-docker` green. A reviewed release PR merges staging into `main`, followed by an annotated tag (D-26).
+
+| Tag | Commit | Content |
+|---|---|---|
+| `v0.1.0-sprint1` | `0a2d8fe` | Sprint 1 (tag created late, 27 Nov) |
+| `v0.2.0-lab5` | `e6fdff0` | Lab 5 Docker, CI/CD, GCP deployment |
+| `v0.3.0-lab7` | `cb02438` | Lab 6 fixes, Lab 7 CR-01 |
+| `v0.4.0-sprint2` | `8c5f638` | Sprint 2 (F-04..F-08) |
+| `v0.5.0-rc1` | planned | Deliverable 2 release candidate (Sprint 1, Sprint 2, F-09) |
+| `v1.0.0` | planned | Final release (13 Dec) |
+
+After `v0.5.0-rc1`, nothing is merged into `main` until `v1.0.0`, so the deployed version keeps matching the submitted tag.
 
 ---
 
@@ -460,9 +489,10 @@ flowchart LR
 
 | Level | Tool | Scope |
 |---|---|---|
-| Unit | Jest | Transition table, display number, `queueDate()`, ordering policy |
-| API and database integration | Jest, Supertest, real PostgreSQL | Persistence, permissions, concurrency, restart; run in band with a truncate before each test file |
-| End-to-end | Playwright | Login and role redirect (E2E-01); customer joins and operator serves (E2E-02) |
+| Unit | Jest | Transition table v1 and v2 (UT-01, UT-06), display number, `queueDate()`, FIFO and priority ordering policies (UT-04, UT-08), no-show rule (UT-05), age and lane (UT-07) |
+| API and database integration | Jest, Supertest, real PostgreSQL | Persistence, permissions, concurrency, restart; one spec per feature (`f01`..`f09`); run in band with a truncate before each test file |
+| End-to-end | Playwright | Login and role redirect (E2E-01); customer joins and operator serves (E2E-02); cancel (E2E-03); counter on the public board (E2E-04); Lab 6 mobile layout; version footer |
+| Manual (screenshot) | Browser on the deployed release | TEST-41 (no-show button), TEST-54 (open/close, end-of-day), TEST-60 (priority badge) |
 
 Tests override the Clock with a fixed time, use a low-cost password hasher, and use `Promise.all` of real HTTP requests for the concurrency tests. Test names start with their ID (for example `TEST-11 / AC-11: ...`). Rule work follows test-first evidence: failing test, saved output, implementation, saved passing output. Per-feature test specifications are written in the Sprint contracts.
 
@@ -478,3 +508,14 @@ Tests override the Clock with a fixed time, use a low-cost password hasher, and 
 | SSL certificate verification against Supabase | Verify with the provider certificate if possible; if verification is disabled, record it as technical debt |
 | `SESSION_SECRET` appears in `.env.example` but the session design does not use it (tokens are random and stored hashed) | Cleanup: remove it or document its purpose |
 | `SEED_DEMO_PASSWORD` has a placeholder value in `.env.example` | Acceptable only as a synthetic development value; real or shared passwords must never be committed |
+| A join committing during end-of-day may leave one WAITING entry (DEF-02) | Accepted known limitation; run end-of-day again (`docs/known-limitations.md`) |
+
+---
+
+## 10. Change history
+
+| Version | Date | Change |
+|---|---|---|
+| 1.0 | 5 Nov 2026 | Baseline for Deliverable 1 |
+| 1.1 | 26 Nov 2026 | Join step 2: BR-02 v2 (Lab 7 CR-01) |
+| 1.2 | 27 Nov 2026 | Code organization with the Sprint 2 modules; ERD `counter_id`; state machine notes (D-27, D-28, UT-06); join step 4 (F-09 lane, `JoinQueueDto`); call-next v3; cancel, no-show, open/close and end-of-day transactions; migration list (002 done, 003 not planned); seed counters and kept `is_open`; error codes `NO_SHOW_TOO_EARLY`, `COUNTER_BUSY`, 415; entry response v2 and board response; endpoint list v2 with counters, health, ready and version; branches and tags (D-25, D-26); test levels |

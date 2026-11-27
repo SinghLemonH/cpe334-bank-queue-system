@@ -163,12 +163,18 @@ describe('F-02 Join queue (integration)', () => {
 
   it('TEST-10 / AC-10: a request body cannot choose the lane or the customer', async () => {
     const sid = await login('c1');
-    const res = await request(server())
+    // F-09 (AC-56, BR-15): JoinQueueDto rejects any client-supplied fields with 400 VALIDATION_FAILED.
+    const rejected = await request(server())
       .post('/api/queues/D/entries')
       .set('Cookie', `sid=${sid}`)
       .send({ lane: 'PRIORITY', customerId: c2.id })
-      .expect(201);
+      .expect(400);
+    expect(rejected.body.error.code).toBe('VALIDATION_FAILED');
 
+    const before = await db.query(`SELECT id FROM queue_entries`);
+    expect(before).toHaveLength(0);
+
+    const res = await request(server()).post('/api/queues/D/entries').set('Cookie', `sid=${sid}`).expect(201);
     expect(res.body.lane).toBe('REGULAR');
     const rows = await db.query(`SELECT customer_id, lane FROM queue_entries WHERE id = $1`, [res.body.id]);
     expect(rows[0].customer_id).toBe(c1.id);

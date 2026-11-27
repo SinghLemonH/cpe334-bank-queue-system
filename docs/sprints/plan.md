@@ -1,6 +1,6 @@
 # Three-Sprint Plan: Bank Branch Queue System
 
-Version 1.0 (5 Nov 2026). Features are defined in `docs/features.md`; requirement coverage is in `docs/traceability.md`.
+Version 1.1 (27 Nov 2026; 1.0 5 Nov 2026). Version 1.1 adds section 10, which records how the actual Sprint 2 and Sprint 3 work differs from this plan. Sections 1 to 9 are the plan as approved on 5 Nov and are not rewritten. Features are defined in `docs/features.md`; requirement coverage is in `docs/traceability.md`.
 
 ## 1. Overview
 
@@ -167,3 +167,16 @@ Lab evidence cites its own PR, tag and deployment, separate from sprint feature 
 ## 9. Change control
 
 A change to scope, feature allocation or sprint dates is recorded in the change table of `docs/traceability.md` (section 5.2) and in the SRS decision log with the date, the reason and the affected IDs. History is never rewritten.
+
+## 10. Plan changes (recorded 27 Nov 2026)
+
+The feature scope and allocation did not change: Sprint 2 is still F-04 to F-08 and Sprint 3 is still F-09 to F-11. Dates, branches, tags and the Issue breakdown changed.
+
+| ID | Planned (sections 1, 4, 5) | Actual | Reason | Decision |
+|---|---|---|---|---|
+| PROC-03 | Sprint 2 from 9 to 23 Nov, Issues 8 to 12, tag `v0.2.0-sprint2` on 23 Nov | Contracts merged 27 Nov (PR #51); F-04, F-05, F-08 (PR #53) and F-07, F-06 (PR #52) built and merged 26–27 Nov; released 27 Nov as `v0.4.0-sprint2` (`8c5f638`, PR #55) | Lab 5, Lab 6 and Lab 7 work (deployment, UAT, CR-01) took the planned Sprint 2 time | Disclosed in the Deliverable 2 PDF |
+| BR-1 | `sprint-2-staging` created from `main` at the Sprint 1 tag | `sprint-2-staging` created 27 Nov from `faca7fb` (the `Lab5-staging` head, which already contained the lab work); `sprint-3-staging` created 27 Nov from `main` at `8c5f638` | The lab work had to stay in the Sprint 2 baseline | D-25 |
+| TAG-1 | Tags `v0.1.0-sprint1`, `v0.2.0-sprint2`, `v0.3.0-rc1`, `v1.0.0`; lab patch releases `v0.1.1`, `v0.1.2`, `v0.2.1` (D-24) | Labs released as `v0.2.0-lab5` and `v0.3.0-lab7`; Sprint 2 `v0.4.0-sprint2`; release candidate `v0.5.0-rc1`; `v0.1.0-sprint1` pushed late on 27 Nov on `0a2d8fe` | The planned version numbers were already used by the lab releases | D-26 |
+| ISS-1 | Sprint 2: 5 Issues (8 to 12); Sprint 3 up to 29 Nov: Issues 13 to 15 | 6 Issues for both: S2-1 contracts (Sprint 2 and 3), S2-2 F-07 + F-06, S2-3 F-04 + F-05 + F-08, S2-4 Sprint 2 release, S3-1 F-09, S3-2 docs baseline + release candidate | Fewer PRs and review rounds in the shorter time; both students still worked in parallel on separate files | – |
+| S3-1 | F-09 by Wed 25 Nov; release candidate on Fri 27 Nov | F-09 merged 27 Nov (PR #56, TDD TEST-57); release candidate `v0.5.0-rc1` planned 28 Nov | Follows the Sprint 2 delay | – |
+| S3-2 | F-10 and F-11 by Mon 30 Nov; final release 13 Dec | Unchanged; the dated plan is in `docs/sprints/sprint-3/remaining-work.md` | | – |

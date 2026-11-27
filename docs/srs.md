@@ -6,7 +6,7 @@
 | **Theme** | 9 Queue and Service Management System |
 | **Context** | Bank Branch Queue System |
 | **Team** | Wichitchai Suwanno (67070503439), Wathit Tritsananawakit (67070503495) |
-| **Document version** | 1.0 (5 Nov 2026), baseline for Project Deliverable 1 |
+| **Document version** | 1.2 (27 Nov 2026), baseline for Project Deliverable 2 (1.0 5 Nov 2026 for Deliverable 1; history in section 12) |
 | **Related documents** | `docs/features.md`, `docs/traceability.md`, `docs/system-sds.md`, `docs/sprints/plan.md` |
 
 Requirement IDs (FR, BR, NFR), decision IDs (D-), and question IDs (Q-) are stable. They are never renumbered or reused. Items still waiting for instructor or TA confirmation are marked **Open** in section 11. Everything else is decided.
@@ -96,7 +96,8 @@ Accounts have exactly one role. Seeded demo accounts are sufficient; there is no
 | Terminal status | COMPLETED, CANCELLED, NO_SHOW or EXPIRED. |
 | Lane | REGULAR or PRIORITY. Every entry has a lane; only REGULAR is used before Sprint 3. |
 | Counter | A named service point (for example "Counter 1") used by an operator in Sprint 2. |
-| People ahead | For a WAITING entry in Sprint 1: the number of WAITING entries in the same queue and queue date with a lower sequence (see A-06). |
+| People ahead | For a WAITING entry: the estimated number of WAITING entries that will be called first in the same queue and queue date (see A-06; v2 since Sprint 3 counts the priority lane). |
+| End of day | An operator action that closes a queue and sets that day's remaining WAITING and CALLED entries to EXPIRED (BR-16, D-27). |
 
 ---
 
@@ -179,9 +180,9 @@ IDs are grouped by sprint, so numbering is not sequential in the table. Allocati
 | A-03 | Seeded demo accounts are enough; account creation is out of scope. |
 | A-04 | An operator serves one customer at a time (BR-06). |
 | A-05 | The server clock is trusted. All "now" values come from one injectable Clock (D-20). |
-| A-06 | In Sprint 1, people ahead = number of WAITING entries in the same queue and queue date with a lower sequence. The Sprint 3 contract revises this definition when the priority lane changes call order. |
+| A-06 | **(v2, Sprint 3 F-09)** People ahead of a WAITING **PRIORITY** entry = PRIORITY WAITING entries with a lower sequence; of a WAITING **REGULAR** entry = all PRIORITY WAITING entries plus REGULAR WAITING entries with a lower sequence (same queue and queue date). It is an estimate: the anti-starvation rule (BR-14) can call a REGULAR entry earlier. *(v1, Sprint 1: WAITING entries with a lower sequence.)* |
 | A-07 | Status updates reach the customer by polling every 5 seconds; no push channel. |
-| A-08 | Entries left unfinished on an earlier day never block a customer or operator today (D-13). Sprint 1 does not expire them; end-of-day expiry arrives in Sprint 2. |
+| A-08 | Entries left unfinished on an earlier day never block a customer or operator today (D-13). Since Sprint 2, end-of-day expires the leftovers of **today** only (D-27); entries from earlier days stay as they are and still block nobody. |
 | A-09 | `GET /api/me/entries` returns today's entries only. |
 
 ---
@@ -213,13 +214,19 @@ IDs are grouped by sprint, so numbering is not sequential in the table. Allocati
 | D-21 | Product | The operator UI recovers state from `GET /api/operator/current-entry`. | A page refresh never loses the entry being served (FR-13). |
 | D-22 | Product | In Sprint 2, `counterId` on call-next is optional. If omitted, no counter is recorded and BR-13 is not applied; the UI always sends it. | Keeps every Sprint 1 test valid. To be recorded as F-03 contract v2. |
 | D-23 | Process | Feature and release PRs are merged with merge commits only (no squash, no rebase). | Keeps red-test and green-implementation commits as TDD evidence. |
-| D-24 | Process | Lab work (Lab 5, Lab 6 fixes, Lab 7 change) reaches `main` through patch releases (`v0.1.1`, `v0.1.2`, `v0.2.1`) cut from the current sprint staging branch, following the normal PR flow. | The pipeline deploys only from `main`. Requires sprint staging to stay releasable. |
+| D-24 | Process | Lab work (Lab 5, Lab 6 fixes, Lab 7 change) reaches `main` through patch releases (`v0.1.1`, `v0.1.2`, `v0.2.1`) cut from the current sprint staging branch, following the normal PR flow. **Superseded in practice by D-25 and D-26:** the lab work was integrated on `Lab5-staging` and released as `v0.2.0-lab5` and `v0.3.0-lab7`. | The pipeline deploys only from `main`. Requires sprint staging to stay releasable. |
+| D-25 | Process | Sprint 2 integrates on `sprint-2-staging` (created 27 Nov 2026 from `faca7fb`, the `Lab5-staging` head); Sprint 3 on `sprint-3-staging` (created from `main` at the `v0.4.0-sprint2` merge commit `8c5f638`). `Lab5-staging` is kept for lab history only. CI runs on pull requests into both sprint branches. | Follows the plan and SDS (`sprint-N-staging`); keeps each sprint's integration history separate. |
+| D-26 | Process | Release tags: `v0.4.0-sprint2`, `v0.5.0-rc1`, `v1.0.0`. The annotated tag `v0.1.0-sprint1` is created late on the Sprint 1 merge commit `0a2d8fe`, with a message saying so. | `v0.2.0` and `v0.3.0` were already used by Labs 5 and 7; the Sprint 1 tag had never been pushed. |
+| D-27 | Product | End-of-day sets only **today's** WAITING and CALLED entries of the queue to EXPIRED. SERVING entries are untouched; the operator completes them. | Matches BR-16 and does not cut off a customer who is being served. |
+| D-28 | Product | Cancel, no-show and expire set `ended_at` to the Clock time. | Every terminal status has an end time, which the service summary (FR-11) needs. |
+| D-29 | Product | New error codes: 409 `NO_SHOW_TOO_EARLY` (BR-12) and 409 `COUNTER_BUSY` (BR-13). | Distinct rejection reasons, so the UI shows the right message. |
+| D-30 | Product | Entry response v2 adds `counterLabel: string \| null`. | FR-09: the customer must know which counter to go to. |
 
 ---
 
 ## 11. Open questions and their resolution
 
-Working defaults are used until the question is answered. Answers will be recorded here with the date and a new decision ID.
+Working defaults are used until the question is answered. Answers will be recorded here with the date and a new decision ID. **Status on 27 Nov 2026:** no answer has been received for Q-01, Q-02 or Q-03. F-05 and F-09 run on the configurable defaults below; these defaults are not confirmed rules.
 
 | ID | Category | Question | Working default | Status |
 |---|---|---|---|---|
@@ -242,3 +249,4 @@ Working defaults are used until the question is answered. Answers will be record
 |---|---|---|
 | 1.0 | 5 Nov 2026 | Initial baseline for Deliverable 1. No approved scope changes yet. |
 | 1.1 | 26 Nov 2026 | Lab 7 CR-01: BR-02 and D-03 changed from one active entry per queue to one per customer per day across all queues. |
+| 1.2 | 27 Nov 2026 | Baseline for Deliverable 2. Added decisions D-25 to D-30 (sprint staging branches, release tag names, end-of-day scope, `ended_at`, new error codes, `counterLabel`); D-24 marked superseded in practice. A-06 revised to people ahead v2 (Sprint 3 contract, section 1.3); A-08 updated for end-of-day; glossary adds End of day. Q-01, Q-02 and Q-03 still Open. No requirement (FR, BR, NFR) was added, removed or renumbered. |

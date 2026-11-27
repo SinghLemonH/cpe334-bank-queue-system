@@ -205,7 +205,10 @@ export default function BoardPage() {
                             {item.displayNumber}
                           </span>
                           {item.lane === 'PRIORITY' && (
-                            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-800">
+                            <span
+                              data-testid="priority-badge"
+                              className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-800"
+                            >
                               Priority
                             </span>
                           )}

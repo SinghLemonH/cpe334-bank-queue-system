@@ -11,8 +11,9 @@ import {
   QueueNotAssignedError,
 } from '../common/errors';
 import { EntryAction, nextStatus, requiredStatus } from '../domain/entry-status';
+import { parsePriorityStreakLimit } from '../domain/ordering/priority-ordering-policy';
 import { CallContext, QUEUE_ORDERING_POLICY, QueueOrderingPolicy } from '../domain/ordering/queue-ordering-policy';
-import { EntryStatus } from '../domain/queue-entry';
+import { EntryStatus, Lane } from '../domain/queue-entry';
 import { mapPgError } from '../infrastructure/pg-errors';
 import { ENTRY_SELECT, EntryRow, EntryView, QueueSummary, toEntry, UUID_RE } from './queue.service';
 
@@ -106,8 +107,12 @@ export class ServiceDeskService {
     code: string,
     counterId?: string,
   ): Promise<EntryView> {
-    // 1. Queue exists (404).
-    const queues: Array<{ id: string }> = await manager.query(`SELECT id FROM queues WHERE code = $1`, [code]);
+    // 1. Queue exists (404). Lock the queue row so concurrent call-next calls on this queue
+    //    serialize their recent-call streak reads and anti-starvation decisions (F-09, BR-14).
+    const queues: Array<{ id: string }> = await manager.query(
+      `SELECT id FROM queues WHERE code = $1 FOR UPDATE`,
+      [code],
+    );
     const queue = queues[0];
     if (!queue) throw new NotFoundError('This queue does not exist.');
 
@@ -149,6 +154,15 @@ export class ServiceDeskService {
     }
 
     // 6. Ask the ordering policy which lane to take from.
+    const streakLimit = parsePriorityStreakLimit(process.env.PRIORITY_STREAK_LIMIT);
+    const recentRows: Array<{ lane: Lane }> = await manager.query(
+      `SELECT lane
+       FROM queue_entries
+       WHERE queue_id = $1 AND queue_date = $2 AND called_at IS NOT NULL
+       ORDER BY called_at DESC, seq DESC
+       LIMIT $3`,
+      [queue.id, queueDate, streakLimit],
+    );
     const flags: Array<{ regular: boolean; priority: boolean }> = await manager.query(
       `SELECT
          EXISTS (SELECT 1 FROM queue_entries WHERE queue_id = $1 AND queue_date = $2
@@ -158,7 +172,7 @@ export class ServiceDeskService {
       [queue.id, queueDate],
     );
     const ctx: CallContext = {
-      recentCalledLanes: [],
+      recentCalledLanes: recentRows.map((row) => row.lane),
       waiting: { REGULAR: flags[0].regular === true, PRIORITY: flags[0].priority === true },
     };
     const lane = this.policy.chooseLane(ctx);

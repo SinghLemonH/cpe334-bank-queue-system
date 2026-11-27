@@ -113,7 +113,17 @@ export function TicketCard({ entry, queueName }: { entry: QueueEntry; queueName:
           {entry.displayNumber}
         </p>
         <div className="mt-4">
-          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${copy.badge}`}>{copy.label}</span>
+          <div className="flex items-center justify-center gap-2">
+            <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${copy.badge}`}>{copy.label}</span>
+            {entry.lane === 'PRIORITY' && (
+              <span
+                data-testid="priority-badge"
+                className="inline-flex rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800"
+              >
+                Priority
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-xs text-stone-500">{copy.th}</p>
         </div>
         <StatusLine entry={entry} />
