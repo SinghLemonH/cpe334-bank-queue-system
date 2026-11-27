@@ -1,6 +1,6 @@
 # Feature Inventory: Bank Branch Queue System
 
-Version 1.0 (5 Nov 2026). Requirement definitions are in `docs/srs.md`. The requirement-to-feature-to-test mapping is in `docs/traceability.md`. Sprint allocation and rationale are in `docs/sprints/plan.md`.
+Version 1.1 (27 Nov 2026; 1.0 5 Nov 2026). 1.1 adds the status of each feature at Deliverable 2 (section 1.1). The feature set, numbering and requirement allocation are unchanged. Requirement definitions are in `docs/srs.md`. The requirement-to-feature-to-test mapping is in `docs/traceability.md`. Sprint allocation and rationale are in `docs/sprints/plan.md`.
 
 ## 1. Feature summary
 
@@ -19,6 +19,24 @@ Version 1.0 (5 Nov 2026). Requirement definitions are in `docs/srs.md`. The requ
 | F-11 | Hardening | 3 | all | NFR-04 (GCP), NFR-06; regression, UX and error handling | all |
 
 Enabling work that is not a feature (no FR/BR): documentation baseline (Issue #1), Sprint 1 contracts (Issue #2) and the monorepo scaffold (Issue #3). They are listed in `docs/sprints/plan.md`.
+
+### 1.1 Status at Deliverable 2 (27 Nov 2026)
+
+Status words: **Planned** (contract only) → **Implemented** (code and tests merged to a staging branch) → **Released** (in a tagged release on `main`, tests passed in the release run). Test results per AC are in `docs/traceability.md`.
+
+| ID | Status | Contract | Merged in | Release | Notes |
+|---|---|---|---|---|---|
+| F-01 | Released | `docs/sprints/sprint-1/F-01-auth.md` | PR #22 (Sprint 1 release) | `v0.1.0-sprint1` (`0a2d8fe`) | Lab 6 fixes #39 in `v0.3.0-lab7` |
+| F-02 | Released | `docs/sprints/sprint-1/F-02-join-queue.md` | PR #22; Lab 7 CR-01 in PR #43 | `v0.1.0-sprint1`; BR-02 v2 in `v0.3.0-lab7` | Join body DTO added by F-09 (AC-56) |
+| F-03 | Released | `docs/sprints/sprint-1/F-03-service-desk.md` (contract v2) | PR #22; v2 (`counterId`) in PR #52 | `v0.1.0-sprint1`; v2 in `v0.4.0-sprint2` | Call-next v3 (queue-row lock) by F-09 |
+| F-04 | Released | `docs/sprints/sprint-2/README.md` 4.2 | PR #53 | `v0.4.0-sprint2` (`8c5f638`) | |
+| F-05 | Released | `docs/sprints/sprint-2/README.md` 4.3 | PR #53 | `v0.4.0-sprint2` | AC-41 is a manual check on the deployed release |
+| F-06 | Released | `docs/sprints/sprint-2/README.md` 4.5 | PR #52 | `v0.4.0-sprint2` | |
+| F-07 | Released | `docs/sprints/sprint-2/README.md` 4.4 | PR #52 | `v0.4.0-sprint2` | Migration 002 |
+| F-08 | Released | `docs/sprints/sprint-2/README.md` 4.6 | PR #53 | `v0.4.0-sprint2` | AC-54 is a manual check; DEF-02 known limitation |
+| F-09 | Implemented | `docs/sprints/sprint-3/README.md` 1 | PR #56 (into `sprint-3-staging`) | planned `v0.5.0-rc1` | AC-60 is a manual check on the deployed release |
+| F-10 | Planned | `docs/sprints/sprint-3/README.md` 2 | – | planned `v1.0.0` | `docs/sprints/sprint-3/remaining-work.md` |
+| F-11 | Planned | `docs/sprints/sprint-3/README.md` 3 | – | planned `v1.0.0` | NFR-04 on GCP is checked at each release until AC-68 |
 
 ## 2. Feature descriptions
 
@@ -63,11 +81,11 @@ A public screen `/board` (large text, auto-refresh) shows, per queue, the number
 
 ### F-07 Counters (Sprint 2)
 
-Named counters per queue. Call-next accepts an optional `counterId` (D-22); when given, the entry records the counter and a counter may hold at most one CALLED or SERVING entry (BR-13). Adds migration 002 and the counter selector on `/operator`. Contract v2 of F-03 records the optional parameter.
+Named counters per queue. Call-next accepts an optional `counterId` (D-22); when given, the entry records the counter and a counter may hold at most one CALLED or SERVING entry (BR-13, 409 `COUNTER_BUSY`, D-29). The entry response carries `counterLabel` (D-30). Adds migration 002, `GET /api/queues/:code/counters` and the counter selector on `/operator`. Contract v2 of F-03 records the optional parameter.
 
 ### F-08 Queue open/close and end-of-day (Sprint 2)
 
-An operator opens or closes an assigned queue (closed queues reject joins, existing entries still served, BR-09). End-of-day closes the queue and sets that day's remaining WAITING and CALLED entries to EXPIRED and returns the count (BR-16).
+An operator opens or closes an assigned queue (closed queues reject joins, existing entries still served, BR-09). End-of-day closes the queue and sets that day's remaining WAITING and CALLED entries to EXPIRED and returns the count (BR-16); SERVING entries are untouched (D-27). The seed keeps each queue's open or closed state on re-run, so a redeploy does not reopen a closed queue.
 
 ### F-09 Priority lane (Sprint 3, scheduled first)
 
