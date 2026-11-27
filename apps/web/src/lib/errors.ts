@@ -61,6 +61,11 @@ const MESSAGES: Record<string, FriendlyMessage> = {
     en: 'Please wait until the grace period has passed before marking no-show.',
     th: 'กรุณารอให้ครบเวลาก่อนบันทึกว่าลูกค้าไม่มา',
   },
+  // F-07 Counters (docs/sprints/sprint-2/README.md 4.4)
+  COUNTER_BUSY: {
+    en: 'This counter is already serving a customer. Choose another counter.',
+    th: 'ช่องบริการนี้กำลังให้บริการลูกค้าอยู่ กรุณาเลือกช่องอื่น',
+  },
 };
 
 /** Cancel copy for INVALID_TRANSITION (F-04 contract 4.2). */

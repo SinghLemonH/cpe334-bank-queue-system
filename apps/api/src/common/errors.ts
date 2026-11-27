@@ -110,6 +110,15 @@ export class NotFoundError extends DomainError {
   }
 }
 
+/** 409 COUNTER_BUSY: call-next with a counter that already has a CALLED/SERVING entry today (D-29, BR-13). */
+export class CounterBusyError extends DomainError {
+  readonly statusCode = 409;
+  readonly errorCode = 'COUNTER_BUSY';
+  constructor(message = 'This counter is already serving a customer. Choose another counter.') {
+    super(message);
+  }
+}
+
 /** 409 NO_SHOW_TOO_EARLY: no-show before the grace period has passed (F-05, BR-12, D-29). */
 export class NoShowTooEarlyError extends DomainError {
   readonly statusCode = 409;
