@@ -1,0 +1,20 @@
+# TEST-38 + UT-05 GREEN evidence (F-05 no-show, BR-12)
+# Run at: 2026-11-27 02:07:15 +07:00
+# Tested commit: 98e4b88af517a99829cb275c9438a88a38402dd3 (F-05 implementation)
+# Node: v24.14.0
+# Command: cd apps/api && npx jest --config jest.config.ts --runInBand --ci test/unit/no-show-rule.spec.ts test/integration/f05-no-show.spec.ts
+
+node.exe : PASS test/integration/f05-no-show.spec.ts
+At line:1 char:1
++ & "D:\/node.exe" "D:\/node_modules/npm/bin/npx-cli.js" jest --config  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PASS test/integ...no-show.spec.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS test/unit/no-show-rule.spec.ts
+
+Test Suites: 2 passed, 2 total
+Tests:       10 passed, 10 total
+Snapshots:   0 total
+Time:        2.505 s, estimated 4 s
+Ran all test suites matching /test\\unit\\no-show-rule.spec.ts|test\\integration\\f05-no-show.spec.ts/i.

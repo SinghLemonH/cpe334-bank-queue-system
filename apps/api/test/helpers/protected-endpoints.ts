@@ -5,9 +5,10 @@
  * `:id` is replaced with a random valid UUID by the test.
  */
 export interface ProtectedEndpoint {
-  method: 'get' | 'post';
+  method: 'get' | 'post' | 'patch';
   path: string;
-  feature: 'F-01' | 'F-02' | 'F-03';
+  /** Sprint 2/3 widened the union (docs/sprints/sprint-2/sts.md 2.7). */
+  feature: 'F-01' | 'F-02' | 'F-03' | 'F-04' | 'F-05' | 'F-06' | 'F-07' | 'F-08' | 'F-09';
 }
 
 export const PROTECTED_ENDPOINTS: ProtectedEndpoint[] = [
@@ -25,4 +26,13 @@ export const PROTECTED_ENDPOINTS: ProtectedEndpoint[] = [
   { method: 'post', path: '/api/queues/D/call-next', feature: 'F-03' },
   { method: 'post', path: '/api/entries/:id/start', feature: 'F-03' },
   { method: 'post', path: '/api/entries/:id/complete', feature: 'F-03' },
+  // F-04 Customer cancel (Sprint 2)
+  { method: 'post', path: '/api/entries/:id/cancel', feature: 'F-04' },
+  // F-05 No-show (Sprint 2)
+  { method: 'post', path: '/api/entries/:id/no-show', feature: 'F-05' },
+  // F-07 Counters (Sprint 2)
+  { method: 'get', path: '/api/queues/D/counters', feature: 'F-07' },
+  // F-08 Queue open/close and end-of-day (Sprint 2)
+  { method: 'patch', path: '/api/queues/D', feature: 'F-08' },
+  { method: 'post', path: '/api/queues/D/end-day', feature: 'F-08' },
 ];

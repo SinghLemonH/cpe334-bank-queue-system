@@ -19,9 +19,9 @@ export interface QueueSummary {
   waitingCount: number;
 }
 
-export type EntryStatus = 'WAITING' | 'CALLED' | 'SERVING' | 'COMPLETED';
+export type EntryStatus = 'WAITING' | 'CALLED' | 'SERVING' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW' | 'EXPIRED';
 
-/** Entry shape from the Sprint 1 contract (README 3.4). */
+/** Entry shape (Sprint 1 README 3.4; Sprint 2 README 3.3 adds counterLabel). */
 export interface QueueEntry {
   id: string;
   queueCode: string;
@@ -29,6 +29,8 @@ export interface QueueEntry {
   status: EntryStatus;
   lane: 'REGULAR' | 'PRIORITY';
   peopleAhead: number | null;
+  /** Sprint 2 (F-07, D-30). Optional until the counters API lands; null when called without a counter. */
+  counterLabel?: string | null;
   joinedAt: string;
   calledAt: string | null;
   startedAt: string | null;

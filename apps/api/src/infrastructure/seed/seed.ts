@@ -25,12 +25,14 @@ export async function runSeed(): Promise<void> {
       { code: 'O', name: 'Account Opening' },
     ];
 
+    // New queues start open. Re-running the seed (the deploy job does on every release) keeps
+    // each existing queue's is_open, so a queue an operator closed stays closed (F-08, NFR-04).
     for (const q of queues) {
       await queryRunner.query(
         `
         INSERT INTO queues (code, name, is_open)
         VALUES ($1, $2, true)
-        ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, is_open = true;
+        ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name;
       `,
         [q.code, q.name],
       );
@@ -92,6 +94,8 @@ export async function runSeed(): Promise<void> {
       );
     }
 
+    await seedCounters(queryRunner);
+
     await queryRunner.commitTransaction();
   } catch (err) {
     await queryRunner.rollbackTransaction();
@@ -100,6 +104,27 @@ export async function runSeed(): Promise<void> {
     await queryRunner.release();
     if (require.main === module) {
       await dataSource.destroy();
+    }
+  }
+}
+
+/** Idempotent demo counters for Sprint 2 (F-07): D -> Counter 1/2, L -> Counter 3, O -> Counter 4. */
+export async function seedCounters(queryRunner: { query: (sql: string, params?: unknown[]) => Promise<unknown> }): Promise<void> {
+  const countersByQueue: Array<{ code: string; labels: string[] }> = [
+    { code: 'D', labels: ['Counter 1', 'Counter 2'] },
+    { code: 'L', labels: ['Counter 3'] },
+    { code: 'O', labels: ['Counter 4'] },
+  ];
+  for (const group of countersByQueue) {
+    for (const label of group.labels) {
+      await queryRunner.query(
+        `
+        INSERT INTO counters (queue_id, label)
+        SELECT id, $2 FROM queues WHERE code = $1
+        ON CONFLICT (queue_id, label) DO NOTHING;
+      `,
+        [group.code, label],
+      );
     }
   }
 }

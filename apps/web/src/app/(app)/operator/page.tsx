@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, EntryStatus, QueueEntry, QueueSummary } from '@/lib/api';
 import { FriendlyMessage, messageFor, messageForDesk } from '@/lib/errors';
 import { AlertCircleIcon, ArrowRightIcon, ClockIcon, SpinnerIcon, TicketIcon } from '@/components/icons';
+import { CounterSelect } from '@/components/operator/CounterSelect';
+import { NoShowButton } from '@/components/operator/NoShowButton';
+import { QueueControls, QueueControlsResult } from '@/components/operator/QueueControls';
 
 const POLL_MS = 5000;
 
@@ -54,6 +57,8 @@ export default function OperatorPage() {
   const [loadError, setLoadError] = useState<FriendlyMessage | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   const [actionError, setActionError] = useState<FriendlyMessage | null>(null);
+  const [notice, setNotice] = useState<FriendlyMessage | null>(null);
+  const [counters, setCounters] = useState<Record<string, string>>({});
 
   const load = useCallback(async (initial: boolean) => {
     try {
@@ -92,16 +97,27 @@ export default function OperatorPage() {
   }, [load]);
 
   /** Runs one action, shows its error (if any) and always reloads queues + current entry. */
-  async function act(key: string, path: string) {
+  async function act(key: string, path: string, body?: unknown) {
     setWorking(key);
     setActionError(null);
+    setNotice(null);
     try {
-      await api<QueueEntry>(path, { method: 'POST' });
+      await api<QueueEntry>(path, {
+        method: 'POST',
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      });
     } catch (err) {
       setActionError(messageForDesk(err instanceof ApiError ? err.code : undefined));
     }
     await load(false);
     setWorking(null);
+  }
+
+  /** F-08 controls report here; the page shows the message and reloads. */
+  async function onQueueControls(result: QueueControlsResult) {
+    setActionError(result.error ?? null);
+    setNotice(result.notice ?? null);
+    await load(false);
   }
 
   const label = entry ? STATUS_LABEL[entry.status] : undefined;
@@ -137,6 +153,16 @@ export default function OperatorPage() {
               <ErrorAlert message={actionError} testId="desk-error" />
             </div>
           )}
+          {notice && (
+            <div
+              role="status"
+              data-testid="desk-notice"
+              className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-3 text-sm text-emerald-700"
+            >
+              <p className="font-medium">{notice.en}</p>
+              <p className="text-emerald-600/80">{notice.th}</p>
+            </div>
+          )}
 
           <div className="mt-6 grid gap-6 md:grid-cols-2">
             {/* Left: assigned queues */}
@@ -169,11 +195,25 @@ export default function OperatorPage() {
                           <ClockIcon size={18} />
                           <span className="tabular-nums">{queue.waitingCount} waiting</span>
                         </p>
+                        <div className="mt-4">
+                          <CounterSelect
+                            queueCode={queue.code}
+                            value={counters[queue.code]}
+                            disabled={entry !== null || working !== null}
+                            onChange={(counterId) => setCounters((prev) => ({ ...prev, [queue.code]: counterId }))}
+                          />
+                        </div>
                         <button
                           type="button"
-                          className={`${primaryButton} mt-5`}
+                          className={`${primaryButton} mt-3`}
                           disabled={entry !== null || working !== null}
-                          onClick={() => act(`call-${queue.code}`, `/queues/${queue.code}/call-next`)}
+                          onClick={() =>
+                            act(
+                              `call-${queue.code}`,
+                              `/queues/${queue.code}/call-next`,
+                              counters[queue.code] ? { counterId: counters[queue.code] } : undefined,
+                            )
+                          }
                         >
                           {working === `call-${queue.code}` ? (
                             <>
@@ -185,6 +225,7 @@ export default function OperatorPage() {
                             </>
                           )}
                         </button>
+                        <QueueControls queue={queue} disabled={working !== null} onResult={onQueueControls} />
                       </article>
                     </li>
                   ))}
@@ -204,6 +245,11 @@ export default function OperatorPage() {
                     <p className="mt-3 text-5xl font-bold leading-[1.1] tracking-tight text-stone-900 tabular-nums">
                       {entry.displayNumber}
                     </p>
+                    {entry.counterLabel && (
+                      <p data-testid="current-entry-counter" className="mt-2 text-sm font-medium text-stone-700">
+                        {entry.counterLabel}
+                      </p>
+                    )}
                     {label && (
                       <div className="mt-4">
                         <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${label.badge}`}>
@@ -238,6 +284,12 @@ export default function OperatorPage() {
                         )}
                       </button>
                     )}
+                    <NoShowButton
+                      entry={entry}
+                      disabled={working !== null}
+                      working={working === 'no-show'}
+                      onNoShow={() => act('no-show', `/entries/${entry.id}/no-show`)}
+                    />
                     {entry.status === 'SERVING' && (
                       <button
                         type="button"

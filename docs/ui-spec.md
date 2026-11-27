@@ -1,6 +1,6 @@
 # UI Specification: Bank Branch Queue System
 
-**Version 1.0 - 2026-11-06** - added in Issue #7 (F-01)
+**Version 1.2 - 2026-11-27** - v1.0 added in Issue #7 (F-01); v1.2 in plan Issue S2-1 (ticket card, section 4.8)
 **Reference implementation:** `apps/web/src/app/login/page.tsx` and `apps/web/src/components/icons.tsx`
 **Related:** `docs/system-sds.md` section 4 (screens, shared behavior), feature contracts in `docs/sprints/sprint-N/` (per-screen states and messages)
 
@@ -33,6 +33,7 @@ All tokens are Tailwind classes (Tailwind 3, default palette). Use these, not ad
 | Border | `border-stone-200` / `border-stone-300` | #e7e5e4 / #d6d3d1 | Card edges, dividers, input underline |
 | Primary | `bg-stone-900`, hover `bg-stone-800` | #1c1917 | Primary button, brand mark, icon tiles |
 | Accent | `text-amber-500` | #f59e0b | Decorative highlight only (wave icon). Never for status or errors |
+| Ticket notice (v1.2) | `text-amber-600` | #d97706 | Heading and text of the notice part of the `/my-ticket` card (4.8). Decorative: the status is always carried by the badge, never by this color |
 | Danger | `bg-red-50` `border-red-200` `text-red-700` | | Error alerts |
 | Success (reserved) | `bg-emerald-50` `border-emerald-200` `text-emerald-700` | | Success notices (e.g. "Ticket completed") |
 | Info (reserved) | `bg-sky-50` `border-sky-200` `text-sky-700` | | Neutral notices |
@@ -164,6 +165,32 @@ Success and info alerts use the same shape with the reserved colors from 2.1.
 ### 4.7 Header (signed-in pages)
 White bar, `border-b border-stone-200 px-4 py-3 sm:px-6`: small brand mark + product name left; display name, role badge (`rounded-full bg-stone-100 px-2.5 py-0.5 text-xs text-stone-600`) and a secondary Logout button right. Keeps `data-testid="current-user"`. Below `sm` the product name is hidden (the brand link keeps `aria-label`), the display name truncates (`min-w-0 truncate`), and the icon, badge and Logout do not shrink (`shrink-0`). The bar must fit a 360 px layout width: a 375 px viewport minus a desktop scrollbar (#40).
 
+### 4.8 Ticket card (`/my-ticket`, v1.2)
+A movie-ticket style card. Content and notice texts per status are defined in the Sprint 2 contract ([`sprints/sprint-2/README.md`](sprints/sprint-2/README.md) section 4.7).
+
+```
+ /\/\/\/\/\/\/\/\/\/\/\/\/\      <- zigzag edge (.ticket-edge mask)
+ |  Your ticket number is  |
+ |  หมายเลขคิวของคุณ          |
+ |         D024            |
+ |       [ Waiting ]       |
+ |    People ahead: 3      |
+ |  Deposit & Withdrawal·D |
+ (· · · · · · · · · · · · ·)     <- dotted perforation + side notches
+ |  Notice (amber-600)     |
+ |  message EN / TH        |
+ |  [cal] 27/11/2026       |
+ \/\/\/\/\/\/\/\/\/\/\/\/\/
+      [ Cancel ticket ]          <- secondary button, outside the card
+```
+
+- Card: `ticket-edge relative w-full max-w-sm bg-white text-center`; **no border and no shadow** (the mask would cut them unevenly). The zigzag comes from the `.ticket-edge` class in `globals.css` (tooth size `--t: 8px`, card padding at least `--t`).
+- Number: `text-6xl font-bold tabular-nums`; status badge from 2.1.
+- Perforation: `border-t-2 border-dotted border-stone-300 mx-4`, with two `h-[22px] w-[22px] rounded-full bg-[#f2f1ec]` circles half outside the left and right edges.
+- Notice: heading `text-amber-600 font-semibold`, text `text-sm text-amber-600`, Thai line below.
+- Footer: calendar icon (add `CalendarIcon` to `icons.tsx`) + date `DD/MM/YYYY` in Asia/Bangkok.
+- Keeps `data-testid="ticket"` and the Sprint 1 E2E texts; fits 375 px without horizontal scroll (7).
+
 ## 5. Screen states (every screen)
 
 Matches SDS 4.2. Messages always come from `lib/errors.ts` (EN + TH).
@@ -182,7 +209,7 @@ Templates, not final designs; feature contracts define the content. All use page
 | Screen | Feature | Layout |
 |---|---|---|
 | `/queues` | F-02 (#9) | H1 "Service queues" + Thai sub-line; one white card per queue (`rounded-xl border border-stone-200 p-5`): name, code, Open/Closed badge, "N waiting" with `ClockIcon`, primary **Join** button (disabled when closed) |
-| `/my-ticket` | F-02 (#9) | One large ticket card per entry: overline queue name, display number in Display style, status badge (2.1), "People ahead: N"; empty state per 5 |
+| `/my-ticket` | F-02 (#9); redesigned in S2-3 | One ticket card per entry (4.8 from Sprint 2): number, status badge (2.1), "People ahead: N" or counter, notice, date; Cancel ticket below the card; empty state per 5 |
 | `/operator` | F-03 (#10) | Two columns on `md+`: left assigned-queue list with waiting counts and **Call next**; right current-entry card (4.6) with **Start** or **Complete** as the primary button |
 | `/board` | F-06 (S2) | Full-screen, no header; very large `tabular-nums` numbers per queue; no names (NFR-05) |
 
@@ -223,3 +250,4 @@ Templates, not final designs; feature contracts define the content. All use page
 |---|---|---|---|
 | 1.0 | 2026-11-06 | WATHITx | Initial spec extracted from the redesigned login page (Issue #7) |
 | 1.1 | 2026-11-20 | WATHITx | Lab 6 UAT fixes: the icon-only button example in 4.4 is now 40 × 40 px, to match the touch-target rule in 7 (#39). The header in 4.7 must fit a 360 px layout width (#40). |
+| 1.2 | 2026-11-27 | WATHITx | Ticket card 4.8 (zigzag edges, perforation, notice, date) for `/my-ticket`; `text-amber-600` allowed for the ticket notice only (plan Issue S2-1) |

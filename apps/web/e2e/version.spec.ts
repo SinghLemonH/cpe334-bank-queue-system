@@ -9,7 +9,7 @@ test('footer shows the running release on the public login page', async ({ page,
   const res = await request.get('/api/version');
   expect(res.status()).toBe(200);
   const { version, commit } = (await res.json()) as { version: string; commit: string };
-  expect(version).toBe('0.2.0-lab5');
+  expect(version).toBe('0.4.0-sprint2');
 
   await page.goto('/login');
   const footer = page.getByTestId('app-version');

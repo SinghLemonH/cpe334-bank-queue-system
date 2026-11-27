@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { DataSource, EntityManager } from 'typeorm';
 import { CLOCK_TOKEN, IClock } from '../common/clock';
 import {
+  CounterBusyError,
   InvalidTransitionError,
   NoWaitingEntryError,
   NotEntryOwnerError,
@@ -72,13 +73,13 @@ export class ServiceDeskService {
     return { entry: rows[0] ? toEntry(rows[0]) : null };
   }
 
-  /** 4.3 / workflow 1.2: one transaction, FIFO with FOR UPDATE SKIP LOCKED (BR-03, BR-07). */
-  async callNext(operatorId: string, code: string): Promise<EntryView> {
+  /** 4.3 / workflow 1.2: one transaction, FIFO with FOR UPDATE SKIP LOCKED (BR-03, BR-07, BR-13). */
+  async callNext(operatorId: string, code: string, counterId?: string): Promise<EntryView> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
     try {
-      const entry = await this.callNextInTransaction(queryRunner.manager, operatorId, code);
+      const entry = await this.callNextInTransaction(queryRunner.manager, operatorId, code, counterId);
       await queryRunner.commitTransaction();
       return entry;
     } catch (err) {
@@ -99,7 +100,12 @@ export class ServiceDeskService {
     return this.advance(operatorId, id, 'complete', 'ended_at');
   }
 
-  private async callNextInTransaction(manager: EntityManager, operatorId: string, code: string): Promise<EntryView> {
+  private async callNextInTransaction(
+    manager: EntityManager,
+    operatorId: string,
+    code: string,
+    counterId?: string,
+  ): Promise<EntryView> {
     // 1. Queue exists (404).
     const queues: Array<{ id: string }> = await manager.query(`SELECT id FROM queues WHERE code = $1`, [code]);
     const queue = queues[0];
@@ -108,7 +114,18 @@ export class ServiceDeskService {
     // 2. Operator is assigned (403 FORBIDDEN, BR-05).
     await this.assertAssigned(manager, operatorId, queue.id);
 
-    // 3. Operator holds nothing today (409 OPERATOR_BUSY, BR-06). Earlier days do not count (E6).
+    // 3. counterId given and not a counter of this queue -> 404 NOT_FOUND (F-07 contract 4.1 step 4)
+    if (counterId) {
+      const counters: Array<{ id: string }> = await manager.query(
+        `SELECT id FROM counters WHERE id = $1 AND queue_id = $2`,
+        [counterId, queue.id],
+      );
+      if (counters.length === 0) {
+        throw new NotFoundError('This counter does not exist in this queue.');
+      }
+    }
+
+    // 4. Operator holds nothing today (409 OPERATOR_BUSY, BR-06). Earlier days do not count (E6).
     const queueDate = this.clock.today();
     const held: unknown[] = await manager.query(
       `SELECT 1 FROM queue_entries
@@ -118,7 +135,20 @@ export class ServiceDeskService {
     );
     if (held.length > 0) throw new OperatorBusyError('Finish your current customer before calling the next one.');
 
-    // 4. Ask the ordering policy which lane to take from.
+    // 5. counterId given and that counter has a CALLED/SERVING entry today -> 409 COUNTER_BUSY (BR-13)
+    if (counterId) {
+      const busy: unknown[] = await manager.query(
+        `SELECT 1 FROM queue_entries
+         WHERE counter_id = $1 AND queue_date = $2 AND status IN ('CALLED', 'SERVING')
+         LIMIT 1`,
+        [counterId, queueDate],
+      );
+      if (busy.length > 0) {
+        throw new CounterBusyError('This counter is already serving a customer. Choose another counter.');
+      }
+    }
+
+    // 6. Ask the ordering policy which lane to take from.
     const flags: Array<{ regular: boolean; priority: boolean }> = await manager.query(
       `SELECT
          EXISTS (SELECT 1 FROM queue_entries WHERE queue_id = $1 AND queue_date = $2
@@ -134,7 +164,7 @@ export class ServiceDeskService {
     const lane = this.policy.chooseLane(ctx);
     if (lane === null) throw new NoWaitingEntryError('No customers are waiting in this queue.');
 
-    // 5. Lock the lowest-seq WAITING entry; rows locked by a concurrent call are skipped.
+    // 7. Lock the lowest-seq WAITING entry; rows locked by a concurrent call are skipped.
     const params: unknown[] = [queue.id, queueDate];
     let laneFilter = '';
     if (lane !== 'ANY') {
@@ -152,13 +182,14 @@ export class ServiceDeskService {
     const candidate = candidates[0];
     if (!candidate) throw new NoWaitingEntryError('No customers are waiting in this queue.');
 
-    // 6. Conditional update to nextStatus('WAITING', 'call') = CALLED.
+    // 8. Conditional update to nextStatus('WAITING', 'call') = CALLED.
     //    A same-operator race hits uq_operator_active_entry -> OPERATOR_BUSY (mapPgError).
+    //    A same-counter race hits uq_counter_active_entry -> COUNTER_BUSY (mapPgError).
     await manager.query(
       `UPDATE queue_entries
-       SET status = 'CALLED', operator_id = $2, called_at = $3
+       SET status = 'CALLED', operator_id = $2, called_at = $3, counter_id = $4
        WHERE id = $1 AND status = 'WAITING'`,
-      [candidate.id, operatorId, this.clock.now()],
+      [candidate.id, operatorId, this.clock.now(), counterId ?? null],
     );
     return this.readEntry(manager, candidate.id);
   }
