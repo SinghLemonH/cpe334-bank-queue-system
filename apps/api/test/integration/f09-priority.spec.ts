@@ -149,7 +149,7 @@ describe('F-09 Priority lane (integration)', () => {
       .set('Cookie', `sid=${r1Sid}`)
       .send({ lane: 'PRIORITY' })
       .expect(400);
-    expect(rejected.body.code).toBe('VALIDATION_ERROR');
+    expect(rejected.body.error.code).toBe('VALIDATION_FAILED');
 
     const ok = await request(server()).post('/api/queues/D/entries').set('Cookie', `sid=${r1Sid}`).expect(201);
     expect(ok.body.lane).toBe('REGULAR');

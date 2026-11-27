@@ -3,6 +3,7 @@ import { DataSource, EntityManager } from 'typeorm';
 import { CLOCK_TOKEN, IClock } from '../common/clock';
 import { DuplicateActiveEntryError, NotFoundError, QueueClosedError } from '../common/errors';
 import { formatDisplayNumber } from '../domain/display-number';
+import { laneFor, parsePriorityAge } from '../domain/priority';
 import { DUPLICATE_ACTIVE_ENTRY_MESSAGE, peopleAheadValue } from '../domain/queue-entry';
 import { mapPgError } from '../infrastructure/pg-errors';
 
@@ -62,7 +63,10 @@ export const ENTRY_SELECT = `
              WHERE w.queue_id = e.queue_id
                AND w.queue_date = e.queue_date
                AND w.status = 'WAITING'
-               AND w.seq < e.seq
+               AND (
+                 (e.lane = 'PRIORITY' AND w.lane = 'PRIORITY' AND w.seq < e.seq)
+                 OR (e.lane = 'REGULAR' AND (w.lane = 'PRIORITY' OR (w.lane = 'REGULAR' AND w.seq < e.seq)))
+               )
            )
            ELSE NULL
          END AS people_ahead
@@ -213,14 +217,21 @@ export class QueueService {
     const displayNumber = formatDisplayNumber(queue.code, seq);
     const joinedAt = this.clock.now();
 
+    // F-09 (BR-15): server-side lane assignment from users.date_of_birth and Bangkok queue date.
+    const userRows: Array<{ dob: string | null }> = await manager.query(
+      `SELECT to_char(date_of_birth, 'YYYY-MM-DD') AS dob FROM users WHERE id = $1`,
+      [customerId],
+    );
+    const lane = laneFor(userRows[0]?.dob ?? null, queueDate, parsePriorityAge(process.env.PRIORITY_AGE));
+
     const inserted: Array<{ id: string }> = await manager.query(
       `
       INSERT INTO queue_entries
         (queue_id, queue_date, seq, display_number, customer_id, lane, status, operator_id, joined_at)
-      VALUES ($1, $2, $3, $4, $5, 'REGULAR', 'WAITING', NULL, $6)
+      VALUES ($1, $2, $3, $4, $5, $6, 'WAITING', NULL, $7)
       RETURNING id
       `,
-      [queue.id, queueDate, seq, displayNumber, customerId, joinedAt],
+      [queue.id, queueDate, seq, displayNumber, customerId, lane, joinedAt],
     );
 
     const rows: EntryRow[] = await manager.query(`${ENTRY_SELECT} WHERE e.id = $1`, [inserted[0].id]);
