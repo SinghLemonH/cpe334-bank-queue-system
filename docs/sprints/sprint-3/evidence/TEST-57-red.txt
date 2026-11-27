@@ -1,0 +1,51 @@
+
+> @queue-system/api@0.1.0 test
+> jest --config jest.config.ts --runInBand test/integration/f09-priority.spec.ts test/unit/priority-ordering-policy.spec.ts -t TEST-57|UT-08 --no-color
+
+FAIL test/integration/f09-priority.spec.ts (7.974 s)
+  ● F-09 Priority lane (integration) › TEST-57 (AC-57, BR-14) [TDD]: calls PRIORITY before REGULAR (R1, P1, R2, P2 -> P1, P2, R1, R2)
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Array [
+    -   "111a98c0-e287-4317-9944-fe17a57486f9",
+    -   "9a942806-4981-4df3-b0d4-b39f068dc8c4",
+        "0d248c7f-9cf5-4dfc-a910-e8394233bf70",
+    +   "111a98c0-e287-4317-9944-fe17a57486f9",
+        "eeb44904-a003-4b85-b589-5d62d2be66bc",
+    +   "9a942806-4981-4df3-b0d4-b39f068dc8c4",
+      ]
+
+      169 |     }
+      170 |
+    > 171 |     expect(order).toEqual([p1Id, p2Id, r1Id, r2Id]);
+          |                   ^
+      172 |   });
+      173 |
+      174 |   it('TEST-58 (AC-58, BR-14): anti-starvation calls REGULAR after 3 consecutive PRIORITY calls (P1..P4, R1, R2 -> P1, P2, P3, R1, P4, R2)', async () => {
+
+      at Object.<anonymous> (test/integration/f09-priority.spec.ts:171:19)
+
+FAIL test/unit/priority-ordering-policy.spec.ts
+  ● Test suite failed to run
+
+    [96mtest/unit/priority-ordering-policy.spec.ts[0m:[93m5[0m:[93m8[0m - [91merror[0m[90m TS2307: [0mCannot find module '../../src/domain/ordering/priority-ordering-policy' or its corresponding type declarations.
+
+    [7m5[0m } from '../../src/domain/ordering/priority-ordering-policy';
+    [7m [0m [91m       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+Test Suites: 2 failed, 2 total
+Tests:       1 failed, 4 skipped, 5 total
+Snapshots:   0 total
+Time:        8.378 s, estimated 12 s
+Ran all test suites matching /test\\integration\\f09-priority.spec.ts|test\\unit\\priority-ordering-policy.spec.ts/i with tests matching "TEST-57|UT-08".
+npm error Lifecycle script `test` failed with error:
+npm error code 1
+npm error path C:\dev\cpe334-bank-queue-system\apps\api
+npm error workspace @queue-system/api@0.1.0
+npm error location C:\dev\cpe334-bank-queue-system\apps\api
+npm error command failed
+npm error command C:\Windows\system32\cmd.exe /d /s /c jest --config jest.config.ts --runInBand test/integration/f09-priority.spec.ts test/unit/priority-ordering-policy.spec.ts -t TEST-57^^^|UT-08 --no-color
