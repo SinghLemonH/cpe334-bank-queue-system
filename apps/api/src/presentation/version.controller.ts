@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 
 /** Release name of this build. Bump it with each tagged release. */
-export const APP_VERSION = '0.2.0-lab5';
+export const APP_VERSION = '0.4.0-sprint2';
 
 /**
  * Public: which release is running (Lab 5 R-08).
