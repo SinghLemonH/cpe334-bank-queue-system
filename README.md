@@ -35,6 +35,8 @@ Copy `.env.example` to `.env`. The database password in that example is the synt
 | `COOKIE_SECURE` | `false` on http://localhost. `true` only behind HTTPS. |
 | `SESSION_TTL_HOURS` | Session lifetime. Default `8`. |
 | `NO_SHOW_GRACE_MINUTES` | Minutes after a call before the operator may mark no-show (F-05, BR-12). Whole number, `0` or more. Default `2`. |
+| `PRIORITY_AGE` | Minimum age on the Bangkok queue date for the `PRIORITY` lane (F-09, BR-15). Whole number, `1` or more. Default `60`. |
+| `PRIORITY_STREAK_LIMIT` | Consecutive `PRIORITY` calls before one `REGULAR` ticket is called when both lanes have waiting customers (F-09, BR-14). Whole number, `1` or more. Default `3`. |
 | `SEED_DEMO_PASSWORD` | Password the seed command writes for every demo account. Set it in `.env` before `npm run db:seed`. The README does not treat the placeholder in `.env.example` as a published password; change it if you want. |
 
 Sessions store a SHA-256 hash of a random token, so there is no session signing secret. Lab 5 adds `DB_POOL_MAX` and the `DATABASE_SSL_*` options; the full list, and which values are secret in the cloud, is in [docs/labs/lab05/deployment.md](docs/labs/lab05/deployment.md).

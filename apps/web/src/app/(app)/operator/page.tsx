@@ -252,9 +252,19 @@ export default function OperatorPage() {
                     )}
                     {label && (
                       <div className="mt-4">
-                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${label.badge}`}>
-                          {label.en}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${label.badge}`}>
+                            {label.en}
+                          </span>
+                          {entry.lane === 'PRIORITY' && (
+                            <span
+                              data-testid="priority-badge"
+                              className="inline-flex rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800"
+                            >
+                              Priority
+                            </span>
+                          )}
+                        </div>
                         <p className="mt-1 text-xs text-stone-500">{label.th}</p>
                       </div>
                     )}
