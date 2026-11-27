@@ -28,7 +28,7 @@ describe('GET /api/version', () => {
     const res = await request(app.getHttpServer()).get('/api/version').expect(200);
 
     expect(res.body).toEqual({ version: APP_VERSION, commit: sha });
-    expect(APP_VERSION).toBe('0.4.0-sprint2');
+    expect(APP_VERSION).toBe('0.5.0-rc1');
   });
 
   it('reports commit "local" when GIT_SHA is not set (local runs)', async () => {
